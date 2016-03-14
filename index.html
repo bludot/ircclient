@@ -1,0 +1,31 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Electron App</title
+      <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+        <meta name='apple-mobile-web-app-capable' content='yes' />
+  <link rel="stylesheet" href="./main.css">
+</head>
+<body>
+    <script>
+    const BrowserWindow = require('electron').remote.BrowserWindow;
+  //BrowserWindow.addDevToolsExtension('./react-devtools/react-devtools/shells/chrome');
+  //require('remote').require('browser-window').addDevToolsExtension('./react-devtools/react-devtools/shells/chrome');
+  const ipcRenderer = require('electron').ipcRenderer;
+    //console.log(ipcRenderer.sendSync('client-server', 'ping')); // prints "pong"
+
+
+
+    </script>
+  <div id="messages"></div>
+  <div id="react-root"></div>
+  <script src="./compiled/bundle.js"></script>
+
+</body>
+</html>
+<!--
+## {"server":"irc.systemnet.info","userName":"client_v1","channels":["#legendary_pokemon"]}
+## {"server":"irc.freenode.net","userName":"client_v1","channels":["#blubot_test"]}
+## {"server":"chat.us.freenode.net","userName":"client_v1","channels":["##frontend"]}
+-->
