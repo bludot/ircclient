@@ -85,19 +85,21 @@
 	}*/
 	var data = {
 	    change: function change() {
-	        if (this.msgListener.callback) {
+	        if (this.msgListener.updateMessages) {
 	            this.msgListener.updateMessages(this);
-	            this.msgListener.updateRight(this);
-	            this.msgListener.updateLeft(this);
+	            this.msgListener.updateUsers(this);
+	            this.msgListener.updateRooms(this);
 	            this.msgListener.updateTopic(this);
 	            this.msgListener.updateNick(this);
 	        }
 	        return this;
 	    },
-
+	    view: {
+	        layout: ['rooms', 'mainArea', 'users']
+	    },
 	    current: {
-	        server: "",
-	        room: ""
+	        server: null,
+	        room: null
 	    },
 	    data: [],
 	    msgListener: {
@@ -228,13 +230,12 @@
 	            server.rooms[opt.server_url] = new self.room({ server: opt.server });
 	            return server;
 	        },
-	        updateRooms: function updateRooms() {
-	            this.updateLeft(data);
-	        },
 	        addMsg: function addMsg(server, to, msg, from, callbacks) {
 	            var self = this;
 	            var callbacks = callbacks;
 	            // if room doesnt exist add it
+	            console.log(data.data);
+	            console.log(server);
 	            if (!data.data[server].rooms[to]) {
 	                data.data[server].rooms[to] = new self.room({ server: false });
 	                // it was a new room so update the list
@@ -253,31 +254,71 @@
 	                return self[e](data);
 	            });
 	        },
-	        addUsers: function addUsers() {},
+	        addUsers: function addUsers(server, room, users, callbacks) {
+	            var self = this;
+	            if (!data.data[server].rooms[room].users || data.data[server].rooms[room].users.length < 2) {
+	                data.data[server].rooms[room].users = self.parseUsers(users);
+	            } else {
+	                var users_ = self.userSort(data.data[server].rooms[room].users.concat(self.parseUsers(users)));
+
+	                data.data[server].rooms[room].users = users_;
+	            }
+
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
 	        notice: function notice(msg, server, callbacks) {
 	            var self = this;
-	            data.current.server = server;
+	            //data.current.server = server;
 	            // create the server space in data
 	            data.data[server] = new self.server({ server_url: server, server: true }, self);
 
 	            // set current server
-	            data.current.server = server;
-	            console.log(data.data);
+	            //data.current.server = server;
+	            data.current.room = server;
+
 	            // callbacks
 	            callbacks.forEach(function (e) {
 	                return self[e](data);
 	            });
 	        },
-	        join: function join(room, nick, callbacks) {
+	        quit: function quit(nick, msg, callbacks) {
 	            var self = this;
 	            console.log(data.data);
 
-	            if (!data.data[data.current.server].rooms[room]) {
-	                data.data[data.current.server].rooms[room] = new self.room({ server: false }, self);
-	                // it was a new room so update the list
-	                callbacks = ["updateRooms"].concat(callbacks);
+	            //if(nick == data.data[data.current.server].rooms[room].nick) {
+
+	            //} else {
+	            for (var i in data.data[data.current.server].rooms) {
+	                data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(function (e) {
+	                    return e.nick != nick;
+	                });
+	                self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
 	            }
-	            if (nick == data.data[data.current.server].rooms[room].nick) {} else {}
+	            var callbacks = ["updateMessages", "updateUsers"];
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+
+	            //}
+	        },
+	        join: function join(room, nick, callbacks) {
+	            var self = this;
+	            console.log(data.data);
+	            if (!data.data[data.current.server].rooms[room]) {
+	                data.data[data.current.server].rooms[data.current.room].active = false;
+	                data.data[data.current.server].rooms[room] = new self.room({ server: false }, self);
+	                data.current.room = room;
+	                // it was a new room so update the list
+	                //data.current.room =
+	                //self.changeRoom(room);
+	                callbacks = ["updateRooms", "updateMessages"].concat(callbacks);
+	            }
+	            if (nick == data.data[data.current.server].rooms[room].nick) {} else {
+	                self.addUsers.apply(self, [data.current.server, room, [nick], ["updateUsers"]]);
+	                self.addMsg.apply(self, [data.current.server, room, nick + " has joined the channel", "-", ["updateMessages"]]);
+	            }
 	            /*
 	            join: obj.args[0],
 	            nick: obj.nick,
@@ -289,8 +330,9 @@
 	                return self[e](data);
 	            });
 	        },
-	        connect: function connect(nick, callbacks) {
+	        connect: function connect(nick, server, callbacks) {
 	            var self = this;
+	            data.current.server = server;
 	            // create the server space in data
 	            //data.data[server] = new self.server({server_url: server, nick: nick, server: true}, self);
 
@@ -303,7 +345,7 @@
 	        listener: function listener() {
 	            var self = this;
 	            ipcRenderer.on('client-server', function (event, arg) {
-	                console.log(arg); // prints "pong"
+	                //console.log(arg); // prints "pong"
 	                /*var callback = self.callback;
 	                var updateRight = self.updateRight;
 	                var updateLeft = self.updateLeft;
@@ -496,10 +538,6 @@
 	            return msgs.map(function (msg) {
 	                var _from = msg.from;
 
-	                console.log("the color");
-	                console.log(_from);
-	                console.log(room);
-	                console.log(room.users);
 	                var color = "#aaa";
 	                if (room.users.length > 0) {
 	                    if (room.users.find(function (a) {
@@ -510,7 +548,7 @@
 	                        }).color;
 	                    }
 	                }
-	                console.log(color);
+
 	                var style = { color: color };
 	                var message = msg.msg.split(' ').map(function (a) {
 	                    var tmp_nick;
@@ -577,8 +615,6 @@
 	            return nodes;
 	        };
 
-	        console.log(roomsNodes());
-	        console.log(this.state.data);
 	        return React.createElement(
 	            'div',
 	            { className: 'messages' },
@@ -740,8 +776,8 @@
 	        );
 	    }
 	});
-	var Left_side = React.createClass({
-	    displayName: 'Left_side',
+	var Rooms = React.createClass({
+	    displayName: 'Rooms',
 
 	    getInitialState: function getInitialState() {
 
@@ -750,7 +786,7 @@
 	        };
 	    },
 	    componentDidMount: function componentDidMount() {
-	        this.props.data.msgListener.set('updateLeft', this.updateHandler);
+	        this.props.data.msgListener.set('updateRooms', this.updateHandler);
 	        this.props.data.msgListener.set('changeRoom', this.changeRoom);
 	        //
 	    },
@@ -786,15 +822,18 @@
 	        console.log(this.props.data);
 	        var rooms = [];
 	        for (var i in state_data.data) {
-	            //var style = {'background': ''+user.color+''};
-	            for (var j in state_data.data[i].rooms[j]) {
-	                var server = state_data.data[i].rooms[j].server_name;
+
+	            for (var j in state_data.data[i].rooms) {
+	                var server = state_data.data[i].server_name;
 	                var active = state_data.data[i].rooms[j].active;
 	                var classname = "room_list" + (server ? " server" : "") + (active ? " active" : "");
+	                console.log("server: " + server);
+	                console.log("active?: " + active);
+	                console.log(state_data.data[i].rooms[j]);
 	                rooms.push(React.createElement(
 	                    'li',
-	                    { className: classname, 'data-room': i, onClick: this.changeRoom.bind(this, j) },
-	                    state_data.data[i].rooms[room].room
+	                    { className: classname, 'data-room': j, onClick: this.changeRoom.bind(this, j) },
+	                    j
 	                ));
 	            }
 	        }
@@ -814,8 +853,8 @@
 	        );
 	    }
 	});
-	var Right_side = React.createClass({
-	    displayName: 'Right_side',
+	var Users = React.createClass({
+	    displayName: 'Users',
 
 	    getInitialState: function getInitialState() {
 
@@ -824,7 +863,7 @@
 	        };
 	    },
 	    componentDidMount: function componentDidMount() {
-	        this.props.data.msgListener.set('updateRight', this.updateHandler);
+	        this.props.data.msgListener.set('updateUsers', this.updateHandler);
 	        //
 	    },
 	    updateHandler: function updateHandler(data) {
@@ -838,8 +877,8 @@
 	    render: function render() {
 	        var users = "";
 	        var state_data = this.props.data;
-	        if (this.props.data.current_room != null) {
-	            users = this.props.data.data[this.props.data.current_room].users.map(function (user) {
+	        if (state_data.current.room != null && state_data.data[state_data.current.server]) {
+	            users = state_data.data[state_data.current.server].rooms[state_data.current.room].users.map(function (user) {
 	                var parent_style = { color: user.color };
 	                var style = { 'background': '' + user.code_color + '' };
 	                return React.createElement(
@@ -928,6 +967,21 @@
 	        var drag_area = {
 	            'WebkitAppRegion': 'drag'
 	        };
+	        /*
+	        <Rooms data={this.props.data}/>
+	        <MainArea data={this.props.data}/>
+	        <Users data={this.props.data}/>
+	        */
+
+	        var mainAreaNodes = {
+	            rooms: React.createElement(Rooms, { data: this.props.data }),
+	            mainArea: React.createElement(MainArea, { data: this.props.data }),
+	            users: React.createElement(Users, { data: this.props.data })
+	        };
+	        var mainarea = this.props.data.view.layout.map(function (a) {
+	            return mainAreaNodes[a];
+	        });
+
 	        return React.createElement(
 	            'div',
 	            null,
@@ -939,9 +993,7 @@
 	                React.createElement(KioskBtn, null),
 	                React.createElement(MinimizeBtn, null)
 	            ),
-	            React.createElement(Left_side, { data: this.props.data }),
-	            React.createElement(MainArea, { data: this.props.data }),
-	            React.createElement(Right_side, { data: this.props.data })
+	            mainarea
 	        );
 	    }
 	});

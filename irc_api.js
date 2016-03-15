@@ -22,6 +22,7 @@ module.exports = {
                 };
             } else {
                 // server, to, msg, from, callbacks
+                console.log([obj.server, obj.args[0], obj.args[1], obj.nick, ["updateMessages"]]);
                 return {
                     action: 'addMsg',
                     args: [obj.server, obj.args[0], obj.args[1], obj.nick, ["updateMessages"]]
@@ -29,10 +30,10 @@ module.exports = {
             }
         },
         'rpl_namreply': function(obj) {
-            console.log(obj.args[3].split(" "));
+            // (server, room, users, callbacks)
             return {
                 action: 'addUsers',
-                users: obj.args[3].split(" ")
+                args: [obj.server, obj.args[2], obj.args[3].split(" "), ["updateUsers"]]
             }
         },
         'JOIN': function(obj) {
@@ -44,13 +45,13 @@ module.exports = {
         'QUIT': function(obj) {
             return {
                 action: 'quit',
-                quit: [obj.nick, obj.args[0]]
+                args: [obj.nick, obj.args[0], []]
             }
         },
         'NOTICE': function(obj) {
             return {
                 action: 'notice',
-                args: [obj.args, obj.server, []]
+                args: [obj.args, obj.server, ["updateRooms"]]
             };
         },
         'rpl_isupport': function(obj) {
@@ -122,9 +123,12 @@ module.exports = {
         },
         ' ': function(obj, self) {
             return {
+                action: 'addMsg',
                 args: ['PRIVMSG', self.channel, obj],
                 msg: obj,
-                channel: self.channel
+                channel: self.channel,
+                // server, to, msg, from, callbacks
+                args_: [self.server, self.channel, obj, self.userName, ["updateMessages"]]
             }
         }
     },
@@ -142,16 +146,18 @@ module.exports = {
             debug: true
         });
         this.userName = username;
+        this.server = server;
         /*this.client.addListener('message', function (from, to, message) {
             console.log(from + ' => ' + to + ': ' + message);
             webContents.send('client-server', {msg: message, from: from});
         });*/
         this.client.addListener('connect', function(obj) {
-            webContents.send('client-server', self.rpl_cmds['connect']({username: self.userName}));
+            webContents.send('client-server', self.rpl_cmds['connect']({username: self.userName, server: self.server}));
         });
         this.client.addListener('raw', function(obj) {
             console.log(JSON.stringify(obj));
             if (obj.command && self.rpl_cmds[obj.command]) {
+                obj.server = self.server;
                 webContents.send('client-server', self.rpl_cmds[obj.command](obj));
             }
         });
@@ -163,12 +169,12 @@ module.exports = {
     say: function(text) {
         var self = this;
         var match = text.match(/\/.+?(?=\s)/);
-        var args = this.send_cmds[((match == null)? " ": match[0])](text, this);
+        var args = this.send_cmds[((match == null)? " ": match[0])](text, self);
             this.client.send.apply(this.client, args.args);
         this.webContents.send('client-server', {
-            room: args.channel || self.channel,
-            msg: args.msg,
-            from: args.from || self.userName
+            action: args.action,
+            args: args.args_
+
         });
         if(args.callback) {
             this[args.callback](args.from);
