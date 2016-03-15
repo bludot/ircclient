@@ -35,13 +35,13 @@ import { Scrollbars } from 'react-custom-scrollbars';
 }*/
 var data = {
     change: function() {
-        if(this.msgListener.updateMessages) {
+        if (this.msgListener.updateMessages) {
             this.msgListener.updateMessages(this);
             this.msgListener.updateUsers(this);
             this.msgListener.updateRooms(this);
             this.msgListener.updateTopic(this);
             this.msgListener.updateNick(this);
-    }
+        }
         return this;
     },
     view: {
@@ -53,29 +53,30 @@ var data = {
     },
     current: {
         server: null,
-        room:   null,
+        room: null,
+        nicks: {},
     },
     data: [],
     msgListener: {
         userTypes: {
             '&': {
-                type:'admin',
-                color: '#9879D1',//&
+                type: 'admin',
+                color: '#9879D1', //&
                 order: 0
             },
             '@': {
                 type: 'ops',
-                color: '#C1D189',//@
+                color: '#C1D189', //@
                 order: 1
             },
             '%': {
                 type: 'halfops',
-                color: '#A7B085',//%
+                color: '#A7B085', //%
                 order: 2
             },
             '+': {
                 type: 'voiced',
-                color: '#00D35C',//+
+                color: '#00D35C', //+
                 order: 3
             },
             ' ': {
@@ -85,9 +86,9 @@ var data = {
             }
         },
         hashColor: function(str) {
-          for (var i = 0, hash = 0; i < str.length; hash = str.charCodeAt(i++) + ((hash << 5) - hash));
-          for (var i = 0, colour = "#"; i < 3; colour += ("00" + ((hash >> i++ * 8) & 0xFF).toString(16)).slice(-2));
-          return colour;
+            for (var i = 0, hash = 0; i < str.length; hash = str.charCodeAt(i++) + ((hash << 5) - hash));
+            for (var i = 0, colour = "#"; i < 3; colour += ("00" + ((hash >> i++ * 8) & 0xFF).toString(16)).slice(-2));
+            return colour;
         },
         parseUsers: function(users) {
             var userTypes = data.msgListener.userTypes;
@@ -99,11 +100,11 @@ var data = {
                 var code = ' ';
                 var color = hashColor(user);
 
-                if(userTypes[user.substr(0,1)]) {
-                    type = userTypes[user.substr(0,1)].type;
-                    code_color = userTypes[user.substr(0,1)].color;
+                if (userTypes[user.substr(0, 1)]) {
+                    type = userTypes[user.substr(0, 1)].type;
+                    code_color = userTypes[user.substr(0, 1)].color;
                     nick = user.substr(1);
-                    code = user.substr(0,1);
+                    code = user.substr(0, 1);
                     color = hashColor(user.substr(1))
                 };
                 return {
@@ -115,11 +116,11 @@ var data = {
                 }
             });
             return un_users.sort(function(a, b) {
-                if(userTypes[a.code].order > userTypes[b.code].order) {
-                return 1;
+                if (userTypes[a.code].order > userTypes[b.code].order) {
+                    return 1;
                 }
-                if(userTypes[a.code].order < userTypes[b.code].order) {
-                return -1;
+                if (userTypes[a.code].order < userTypes[b.code].order) {
+                    return -1;
                 }
                 return 0;
             });
@@ -127,73 +128,109 @@ var data = {
         userSort: function(users) {
             var userTypes = data.msgListener.userTypes;
             return users.sort(function(a, b) {
-                if(userTypes[a.code].order > userTypes[b.code].order) {
-                return 1;
+                if (userTypes[a.code].order > userTypes[b.code].order) {
+                    return 1;
                 }
-                if(userTypes[a.code].order < userTypes[b.code].order) {
-                return -1;
+                if (userTypes[a.code].order < userTypes[b.code].order) {
+                    return -1;
                 }
                 return 0;
             });
         },
         room: function(opt) {
-            var room =  {
-                    server: 	true, // true || false,
-                    topic: 		"", // room topic
-                    active:     true,
-                    users: 		[], // users in room
-                    /*{
-                        type: 		'ops', // type of user in plain text
-                        code_color: '#000', // color of the user status
-                        nick: 		"nick", // nick of the user
-                        color:      '#000', // nick color
-                        code: 		'@' // symbol for the user
-                    }*/
+            var room = {
+                server: true, // true || false,
+                topic: "", // room topic
+                active: true,
+                users: [], // users in room
+                /*{
+                    type: 		'ops', // type of user in plain text
+                    code_color: '#000', // color of the user status
+                    nick: 		"nick", // nick of the user
+                    color:      '#000', // nick color
+                    code: 		'@' // symbol for the user
+                }*/
 
-                    msgs: 		[] // messages in this room
+                msgs: [] // messages in this room
 
-                    /*{
-                        time:   "00:00",//time stamp
-                        msg: 	'msg', // message
-                        from: 	'nick' // nick from which it came
-                    }*/
-                };
-                var keys = Object.keys(room);
-                for (var i = 0; i < keys.length; i++) {
-                    var k = keys[i];
-                    if (opt[k] !== undefined){
-                        room[k] = opt[k];
-                    }
+                /*{
+                    time:   "00:00",//time stamp
+                    msg: 	'msg', // message
+                    from: 	'nick' // nick from which it came
+                }*/
+            };
+            var keys = Object.keys(room);
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (opt[k] !== undefined) {
+                    room[k] = opt[k];
                 }
-                return room;
+            }
+            return room;
         },
         server: function(opt, self) {
             var server = {
-                server_url: 	"", // server url
+                server_url: "", // server url
                 server_name: "", // server netowrk name
-                nick: 		"", // your nick in server,
+                nick: "", // your nick in server,
                 rooms: {}
             };
-                var keys = Object.keys(server);
-                for (var i = 0; i < keys.length; i++) {
-                    var k = keys[i];
-                    if (opt[k] !== undefined){
-                        server[k] = opt[k];
-                    }
+            var keys = Object.keys(server);
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (opt[k] !== undefined) {
+                    server[k] = opt[k];
                 }
-                server.rooms[opt.server_url] = new self.room({server: opt.server});
+            }
+            server.rooms[opt.server_url] = new self.room({
+                server: opt.server
+            });
             return server;
+        },
+        actionMsg: function(server, to, msg, from, callbacks) {
+            var self = this;
+            var callbacks = callbacks;
+            // if room doesnt exist add it
+            var to = to;
+            if(to == data.current.nicks[server].nick) {
+                to = from;
+            }
+            if (!data.data[server].rooms[to]) {
+                data.data[server].rooms[to] = new self.room({
+                    server: false
+                });
+                // it was a new room so update the list
+                callbacks = ["updateRooms"].concat(callbacks);
+                self.join(to, data.current.nicks[server].nick, []);
+            }
+
+            // we have the room at this point, add the message
+            var time = new Date();
+            data.data[server].rooms[to].msgs.push({
+                time: time,
+                msg: msg,
+                action: true,
+                from: from
+            });
+
+            callbacks.forEach(e => self[e](data));
+
         },
         addMsg: function(server, to, msg, from, callbacks) {
             var self = this;
             var callbacks = callbacks;
             // if room doesnt exist add it
-            console.log(data.data);
-            console.log(server);
-            if(!data.data[server].rooms[to]) {
-                data.data[server].rooms[to] = new self.room({server: false});
+            var to = to;
+            if(to == data.current.nicks[server].nick) {
+                to = from;
+            }
+            if (!data.data[server].rooms[to]) {
+                data.data[server].rooms[to] = new self.room({
+                    server: false
+                });
                 // it was a new room so update the list
                 callbacks = ["updateRooms"].concat(callbacks);
+                self.join(to, data.current.nicks[server].nick, []);
             }
 
             // we have the room at this point, add the message
@@ -205,10 +242,11 @@ var data = {
             });
 
             callbacks.forEach(e => self[e](data));
+
         },
         addUsers: function(server, room, users, callbacks) {
             var self = this;
-            if(!data.data[server].rooms[room].users || data.data[server].rooms[room].users.length < 2) {
+            if (!data.data[server].rooms[room].users || data.data[server].rooms[room].users.length < 2) {
                 data.data[server].rooms[room].users = self.parseUsers(users);
             } else {
                 var users_ = self.userSort(data.data[server].rooms[room].users.concat(self.parseUsers(users)));
@@ -220,12 +258,14 @@ var data = {
         },
         notice: function(msg, server, callbacks) {
             var self = this;
-            //data.current.server = server;
+
             // create the server space in data
-            data.data[server] = new self.server({server_url: server, server: true}, self);
+            data.data[server] = new self.server({
+                server_url: server,
+                server: true
+            }, self);
 
             // set current server
-            //data.current.server = server;
             data.current.room = server;
 
             // callbacks
@@ -233,58 +273,56 @@ var data = {
         },
         quit: function(nick, msg, callbacks) {
             var self = this;
-            console.log(data.data);
 
-            //if(nick == data.data[data.current.server].rooms[room].nick) {
+            for (var i in data.data[data.current.server].rooms) {
+                data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(e => e.nick != nick);
+                self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
+            }
+            var callbacks = ["updateMessages", "updateUsers"];
+            callbacks.forEach(e => self[e](data));
 
-            //} else {
-                for(var i in data.data[data.current.server].rooms) {
-                    data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(e => e.nick != nick);
-                    self.addMsg.apply(self, [data.current.server, i, nick+" has left the channel: "+msg, "-", ["updateMessages"]]);
-                }
-                var callbacks =["updateMessages", "updateUsers"];
-                callbacks.forEach(e => self[e](data));
-
-            //}
         },
         join: function(room, nick, callbacks) {
             var self = this;
-            console.log(data.data);
-            if(!data.data[data.current.server].rooms[room]) {
-                data.data[data.current.server].rooms[data.current.room].active = false;
-                data.data[data.current.server].rooms[room] = new self.room({server: false}, self);
-                data.current.room = room;
-                // it was a new room so update the list
-                //data.current.room =
-                //self.changeRoom(room);
-                callbacks = ["updateRooms", "updateMessages"].concat(callbacks);
-            }
-            if(nick == data.data[data.current.server].rooms[room].nick) {
 
-            } else {
-                self.addUsers.apply(self, [data.current.server, room, [nick], ["updateUsers"]]);
-                self.addMsg.apply(self, [data.current.server, room, nick+" has joined the channel", "-", ["updateMessages"]]);
+            if (!data.data[data.current.server].rooms[room]) {
+                //data.data[data.current.server].rooms[data.current.room].active = false;
+                data.data[data.current.server].rooms[room] = new self.room({
+                    server: false
+                }, self);
+                //data.current.room = room;
+                // it was a new room so update the list
+                callbacks = ["updateRooms", "updateMessages"].concat(callbacks);
+                callbacks.forEach(e => self[e](data));
+                self.changeRoom(room);
             }
-/*
-join: obj.args[0],
-nick: obj.nick,
-server: obj.server
-*/
+            if(nick) {
+                if (nick == data.data[data.current.server].rooms[room].nick) {
+
+                } else {
+                    self.addUsers.apply(self, [data.current.server, room, [nick],
+                        ["updateUsers"]
+                    ]);
+                    self.addMsg.apply(self, [data.current.server, room, nick + " has joined the channel", "-", ["updateMessages"]]);
+                    callbacks.forEach(e => self[e](data));
+                }
+            }
+            /*
+            join: obj.args[0],
+            nick: obj.nick,
+            server: obj.server
+            */
 
             // callbacks
-            callbacks.forEach(e => self[e](data));
+
         },
         connect: function(nick, server, callbacks) {
             var self = this;
             data.current.server = server;
-            // create the server space in data
-            //data.data[server] = new self.server({server_url: server, nick: nick, server: true}, self);
+            data.current.nicks[server] = {
+                nick: nick
+            };
 
-            // set current server
-            //data.current.server = server;
-
-            // callbacks
-            //callbacks.forEach(e => self[e](data));
         },
         listener: function() {
             var self = this;
@@ -298,7 +336,7 @@ server: obj.server
                 var updateTopic = self.updateTopic;
                 var updateNick = self.updateNick;
                 var changeRoom = self.changeRoom;*/
-                if(self[arg.action]) {
+                if (self[arg.action]) {
 
                     self[arg.action].apply(self, arg.args);
                 }
@@ -446,7 +484,7 @@ server: obj.server
                 updateLeft(data);
             }
 */
-        });
+            });
             return true;
         },
         set: function(kind, value) {
@@ -494,6 +532,9 @@ var Messages = React.createClass({
                 }
 
                 var style = {color: color};
+                if(msg.msg.substr(0, 12).indexOf("ACTION") != -1) {
+                    msg.msg = msg.msg.substr(7);
+                }
                 var message = msg.msg.split(' ').map(function(a) {
                     var tmp_nick;
                     var space = String.fromCharCode(32);
@@ -506,7 +547,15 @@ var Messages = React.createClass({
                         }
                     }
                 });
-                return (<li key={msg.key}><time>{msg.time.toUTCString().match(/\d+?:\d.+?:\d.+?/)[0]}</time><span><span style={style}>{msg.from}</span><span>{message}</span></span></li>);
+                var from = {
+                    msg:msg.from,
+                    style:{}
+                };
+                if(msg.action) {
+                    from.msg = "- "+msg.from;
+                    from.style={fontStyle: 'italic'};
+                }
+                return (<li key={msg.key} style={from.style}><time>{msg.time.toUTCString().match(/\d+?:\d.+?:\d.+?/)[0]}</time><span><span style={style}>{from.msg}</span><span>{message}</span></span></li>);
             });
         };
 
@@ -548,7 +597,7 @@ var Input = React.createClass({
         this.setState({
             value: event.target.value
         });
-        console.log(event.keyCode);
+
     },
     handleKeyDown: function(event) {
         if (event.keyCode == 9) {
@@ -563,7 +612,7 @@ var Input = React.createClass({
 
         if (event.keyCode == 13) {
 
-            console.log("test");
+
             if(this.state.value.substr(0,2) == "##") {
                 var args = this.state.value.split(" ");
                 ipcRenderer.send('client-server', {
@@ -655,7 +704,7 @@ var Rooms = React.createClass({
         //
     },
     updateHandler: function(data) {
-        console.log("updateLeft handler has run");
+
         this.setState({
             data: data
         });
@@ -663,6 +712,7 @@ var Rooms = React.createClass({
         //node.scrollTop = node.scrollHeight;
     },
     changeRoom: function(room) {
+        console.log("changing rooms");
         this.props.data.data[this.props.data.current.server].rooms[this.props.data.current.room].active = false;
         this.props.data.current.room = room;
         this.props.data.data[this.props.data.current.server].rooms[room].active = true;
@@ -672,32 +722,29 @@ var Rooms = React.createClass({
                 room: room
             }
         });
-        console.log("##########################CHANGE ROOM!");
-        console.log(this.props.data);
+
         this.props.data.change();
         this.setState({
             data: this.props.data.change()
         });
+        console.log(this.state.data);
     },
     render: function() {
 
         var state_data = this.props.data;
-        console.log("rendering left side");
-        console.log(this.props.data);
+
         var rooms = [];
         for(var i in state_data.data) {
 
               for(var j in state_data.data[i].rooms) {
-                  var server = state_data.data[i].server_name;
+                  var server = state_data.data[i].rooms[j].server;
                   var active = state_data.data[i].rooms[j].active;
                   var classname = "room_list"+ (server ? " server":"") + (active ? " active":"");
-                  console.log("server: "+server);
-                  console.log("active?: "+active);
-                  console.log(state_data.data[i].rooms[j]);
+
                   rooms.push(<li className={classname} data-room={j} onClick={this.changeRoom.bind(this, j)}>{j}</li>);
             }
         }
-        console.log(rooms);
+
         return(<div className="left_side"><Scrollbars ref="scrollbars"><ul>{rooms}</ul></Scrollbars></div>);
     }
 });
@@ -713,7 +760,7 @@ var Users = React.createClass({
       //
   },
   updateHandler: function(data) {
-    console.log("got data for users");
+
       this.setState({
           data: data
       });
@@ -753,7 +800,7 @@ var Topic = React.createClass({
         //
     },
     updateHandler: function(data) {
-      console.log("got data for users");
+
         this.setState({
             data: data
         });

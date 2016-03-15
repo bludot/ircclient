@@ -99,7 +99,8 @@
 	    },
 	    current: {
 	        server: null,
-	        room: null
+	        room: null,
+	        nicks: {}
 	    },
 	    data: [],
 	    msgListener: {
@@ -227,19 +228,56 @@
 	                    server[k] = opt[k];
 	                }
 	            }
-	            server.rooms[opt.server_url] = new self.room({ server: opt.server });
+	            server.rooms[opt.server_url] = new self.room({
+	                server: opt.server
+	            });
 	            return server;
+	        },
+	        actionMsg: function actionMsg(server, to, msg, from, callbacks) {
+	            var self = this;
+	            var callbacks = callbacks;
+	            // if room doesnt exist add it
+	            var to = to;
+	            if (to == data.current.nicks[server].nick) {
+	                to = from;
+	            }
+	            if (!data.data[server].rooms[to]) {
+	                data.data[server].rooms[to] = new self.room({
+	                    server: false
+	                });
+	                // it was a new room so update the list
+	                callbacks = ["updateRooms"].concat(callbacks);
+	                self.join(to, data.current.nicks[server].nick, []);
+	            }
+
+	            // we have the room at this point, add the message
+	            var time = new Date();
+	            data.data[server].rooms[to].msgs.push({
+	                time: time,
+	                msg: msg,
+	                action: true,
+	                from: from
+	            });
+
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
 	        },
 	        addMsg: function addMsg(server, to, msg, from, callbacks) {
 	            var self = this;
 	            var callbacks = callbacks;
 	            // if room doesnt exist add it
-	            console.log(data.data);
-	            console.log(server);
+	            var to = to;
+	            if (to == data.current.nicks[server].nick) {
+	                to = from;
+	            }
 	            if (!data.data[server].rooms[to]) {
-	                data.data[server].rooms[to] = new self.room({ server: false });
+	                data.data[server].rooms[to] = new self.room({
+	                    server: false
+	                });
 	                // it was a new room so update the list
 	                callbacks = ["updateRooms"].concat(callbacks);
+	                self.join(to, data.current.nicks[server].nick, []);
 	            }
 
 	            // we have the room at this point, add the message
@@ -270,12 +308,14 @@
 	        },
 	        notice: function notice(msg, server, callbacks) {
 	            var self = this;
-	            //data.current.server = server;
+
 	            // create the server space in data
-	            data.data[server] = new self.server({ server_url: server, server: true }, self);
+	            data.data[server] = new self.server({
+	                server_url: server,
+	                server: true
+	            }, self);
 
 	            // set current server
-	            //data.current.server = server;
 	            data.current.room = server;
 
 	            // callbacks
@@ -285,11 +325,7 @@
 	        },
 	        quit: function quit(nick, msg, callbacks) {
 	            var self = this;
-	            console.log(data.data);
 
-	            //if(nick == data.data[data.current.server].rooms[room].nick) {
-
-	            //} else {
 	            for (var i in data.data[data.current.server].rooms) {
 	                data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(function (e) {
 	                    return e.nick != nick;
@@ -300,24 +336,31 @@
 	            callbacks.forEach(function (e) {
 	                return self[e](data);
 	            });
-
-	            //}
 	        },
 	        join: function join(room, nick, callbacks) {
 	            var self = this;
-	            console.log(data.data);
+
 	            if (!data.data[data.current.server].rooms[room]) {
-	                data.data[data.current.server].rooms[data.current.room].active = false;
-	                data.data[data.current.server].rooms[room] = new self.room({ server: false }, self);
-	                data.current.room = room;
+	                //data.data[data.current.server].rooms[data.current.room].active = false;
+	                data.data[data.current.server].rooms[room] = new self.room({
+	                    server: false
+	                }, self);
+	                //data.current.room = room;
 	                // it was a new room so update the list
-	                //data.current.room =
-	                //self.changeRoom(room);
 	                callbacks = ["updateRooms", "updateMessages"].concat(callbacks);
+	                callbacks.forEach(function (e) {
+	                    return self[e](data);
+	                });
+	                self.changeRoom(room);
 	            }
-	            if (nick == data.data[data.current.server].rooms[room].nick) {} else {
-	                self.addUsers.apply(self, [data.current.server, room, [nick], ["updateUsers"]]);
-	                self.addMsg.apply(self, [data.current.server, room, nick + " has joined the channel", "-", ["updateMessages"]]);
+	            if (nick) {
+	                if (nick == data.data[data.current.server].rooms[room].nick) {} else {
+	                    self.addUsers.apply(self, [data.current.server, room, [nick], ["updateUsers"]]);
+	                    self.addMsg.apply(self, [data.current.server, room, nick + " has joined the channel", "-", ["updateMessages"]]);
+	                    callbacks.forEach(function (e) {
+	                        return self[e](data);
+	                    });
+	                }
 	            }
 	            /*
 	            join: obj.args[0],
@@ -326,21 +369,13 @@
 	            */
 
 	            // callbacks
-	            callbacks.forEach(function (e) {
-	                return self[e](data);
-	            });
 	        },
 	        connect: function connect(nick, server, callbacks) {
 	            var self = this;
 	            data.current.server = server;
-	            // create the server space in data
-	            //data.data[server] = new self.server({server_url: server, nick: nick, server: true}, self);
-
-	            // set current server
-	            //data.current.server = server;
-
-	            // callbacks
-	            //callbacks.forEach(e => self[e](data));
+	            data.current.nicks[server] = {
+	                nick: nick
+	            };
 	        },
 	        listener: function listener() {
 	            var self = this;
@@ -550,6 +585,9 @@
 	                }
 
 	                var style = { color: color };
+	                if (msg.msg.substr(0, 12).indexOf("ACTION") != -1) {
+	                    msg.msg = msg.msg.substr(7);
+	                }
 	                var message = msg.msg.split(' ').map(function (a) {
 	                    var tmp_nick;
 	                    var space = String.fromCharCode(32);
@@ -572,9 +610,17 @@
 	                        }
 	                    }
 	                });
+	                var from = {
+	                    msg: msg.from,
+	                    style: {}
+	                };
+	                if (msg.action) {
+	                    from.msg = "- " + msg.from;
+	                    from.style = { fontStyle: 'italic' };
+	                }
 	                return React.createElement(
 	                    'li',
-	                    { key: msg.key },
+	                    { key: msg.key, style: from.style },
 	                    React.createElement(
 	                        'time',
 	                        null,
@@ -586,7 +632,7 @@
 	                        React.createElement(
 	                            'span',
 	                            { style: style },
-	                            msg.from
+	                            from.msg
 	                        ),
 	                        React.createElement(
 	                            'span',
@@ -652,7 +698,6 @@
 	        this.setState({
 	            value: event.target.value
 	        });
-	        console.log(event.keyCode);
 	    },
 	    handleKeyDown: function handleKeyDown(event) {
 	        if (event.keyCode == 9) {
@@ -666,7 +711,6 @@
 
 	        if (event.keyCode == 13) {
 
-	            console.log("test");
 	            if (this.state.value.substr(0, 2) == "##") {
 	                var args = this.state.value.split(" ");
 	                ipcRenderer.send('client-server', {
@@ -791,7 +835,7 @@
 	        //
 	    },
 	    updateHandler: function updateHandler(data) {
-	        console.log("updateLeft handler has run");
+
 	        this.setState({
 	            data: data
 	        });
@@ -799,6 +843,7 @@
 	        //node.scrollTop = node.scrollHeight;
 	    },
 	    changeRoom: function changeRoom(room) {
+	        console.log("changing rooms");
 	        this.props.data.data[this.props.data.current.server].rooms[this.props.data.current.room].active = false;
 	        this.props.data.current.room = room;
 	        this.props.data.data[this.props.data.current.server].rooms[room].active = true;
@@ -808,28 +853,25 @@
 	                room: room
 	            }
 	        });
-	        console.log("##########################CHANGE ROOM!");
-	        console.log(this.props.data);
+
 	        this.props.data.change();
 	        this.setState({
 	            data: this.props.data.change()
 	        });
+	        console.log(this.state.data);
 	    },
 	    render: function render() {
 
 	        var state_data = this.props.data;
-	        console.log("rendering left side");
-	        console.log(this.props.data);
+
 	        var rooms = [];
 	        for (var i in state_data.data) {
 
 	            for (var j in state_data.data[i].rooms) {
-	                var server = state_data.data[i].server_name;
+	                var server = state_data.data[i].rooms[j].server;
 	                var active = state_data.data[i].rooms[j].active;
 	                var classname = "room_list" + (server ? " server" : "") + (active ? " active" : "");
-	                console.log("server: " + server);
-	                console.log("active?: " + active);
-	                console.log(state_data.data[i].rooms[j]);
+
 	                rooms.push(React.createElement(
 	                    'li',
 	                    { className: classname, 'data-room': j, onClick: this.changeRoom.bind(this, j) },
@@ -837,7 +879,7 @@
 	                ));
 	            }
 	        }
-	        console.log(rooms);
+
 	        return React.createElement(
 	            'div',
 	            { className: 'left_side' },
@@ -867,7 +909,7 @@
 	        //
 	    },
 	    updateHandler: function updateHandler(data) {
-	        console.log("got data for users");
+
 	        this.setState({
 	            data: data
 	        });
@@ -930,7 +972,7 @@
 	        //
 	    },
 	    updateHandler: function updateHandler(data) {
-	        console.log("got data for users");
+
 	        this.setState({
 	            data: data
 	        });

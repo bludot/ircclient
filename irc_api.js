@@ -10,7 +10,7 @@ module.exports = {
             };
         },
         'PRIVMSG': function(obj) {
-            console.log(obj.args[1].substr(0, 12));
+
             if (obj.args[1].substr(0, 12).indexOf("ACTION") != -1) {
 
                 return {
@@ -18,11 +18,12 @@ module.exports = {
                     room: obj.args[0],
                     from: obj.nick,
                     msg: obj.args[1],
-                    server: obj.server
+                    server: obj.server,
+                    args: [obj.server, obj.args[0], obj.args[1], obj.nick, ["updateMessages"]]
                 };
             } else {
                 // server, to, msg, from, callbacks
-                console.log([obj.server, obj.args[0], obj.args[1], obj.nick, ["updateMessages"]]);
+
                 return {
                     action: 'addMsg',
                     args: [obj.server, obj.args[0], obj.args[1], obj.nick, ["updateMessages"]]
@@ -45,7 +46,9 @@ module.exports = {
         'QUIT': function(obj) {
             return {
                 action: 'quit',
-                args: [obj.nick, obj.args[0], []]
+                args: [obj.nick, obj.args[0],
+                    []
+                ]
             }
         },
         'NOTICE': function(obj) {
@@ -75,31 +78,45 @@ module.exports = {
             }
         },
         'rpl_topic': function(obj) {
-            return {
-                action: 'topic',
-                rpl_topic: obj.args[2],
-                server: obj.server
-            };
-        }/*,
-        'rpl_welcome': function(obj) {
-            return {rpl_welcome: obj.args[0], server: obj.server, msg: obj.args[1]};
-        }*/
+                return {
+                    action: 'topic',
+                    rpl_topic: obj.args[2],
+                    server: obj.server
+                };
+            }
+            /*,
+                    'rpl_welcome': function(obj) {
+                        return {rpl_welcome: obj.args[0], server: obj.server, msg: obj.args[1]};
+                    }*/
     },
     send_cmds: {
         '/me': function(obj, self) {
             //('PRIVMSG', this.channel, '\001ACTION ' + text.substr(4) + '\001');
             return {
+                action: 'actionMsg',
                 args: ['PRIVMSG', self.channel, '\001ACTION ' + obj.substr(4) + '\001'],
                 msg: '\001ACTION ' + obj.substr(4) + '\001',
-                channel: self.channel
+                channel: self.channel,
+                /*
+                action: 'actionMsg',
+                room: obj.args[0],
+                from: obj.nick,
+                msg: obj.args[1],
+                server: obj.server
+                */
+                // server, to, msg, from, callbacks
+                args_: [self.server, self.channel, '\001ACTION ' + obj.substr(4) + '\001', self.userName, ["updateMessages"]]
             }
         },
         '/join': function(obj, self) {
             var channels = obj.substr(6).split(' ');
-            self.channel = channels[channels.length-1];
+            self.channel = channels[channels.length - 1];
             return {
+                action: 'join',
                 args: ['JOIN'].concat(obj.substr(6).split(' ')),
-                msg: ''
+                msg: '',
+                // server, to, msg, from, callbacks
+                args_: [obj.substr(6).split(' ')[0], null, []]
             }
         },
         '/nick': function(obj, self) {
@@ -107,17 +124,20 @@ module.exports = {
                 args: ['NICK', obj.substr(6).split(' ')[0]],
                 msg: obj.substr(6).split(' ')[0],
                 channel: self.channel,
-                from: self.userName//obj.substr(5).split(' ')[0],
+                from: self.userName //obj.substr(5).split(' ')[0],
             }
         },
         '/msg': function(obj, self) {
             var channels = obj.substr(5).split(' ')[0];
             self.channel = channels;
             return {
-                args: ['PRIVMSG', obj.substr(5).split(' ')[0], obj.substr(channels.length+5)],
-                msg: obj.substr(channels.length+5),
+                action: "addMsg",
+                args: ['PRIVMSG', obj.substr(5).split(' ')[0], obj.substr(channels.length + 5)],
+                msg: obj.substr(channels.length + 5),
                 channel: obj.substr(5).split(' ')[0],
-                from: self.userName,//obj.substr(5).split(' ')[0],
+                from: self.userName,
+                // server, to, msg, from, callbacks
+                args_: [self.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateRooms"]],
                 callback: "changeChannel"
             }
         },
@@ -147,12 +167,12 @@ module.exports = {
         });
         this.userName = username;
         this.server = server;
-        /*this.client.addListener('message', function (from, to, message) {
-            console.log(from + ' => ' + to + ': ' + message);
-            webContents.send('client-server', {msg: message, from: from});
-        });*/
+
         this.client.addListener('connect', function(obj) {
-            webContents.send('client-server', self.rpl_cmds['connect']({username: self.userName, server: self.server}));
+            webContents.send('client-server', self.rpl_cmds['connect']({
+                username: self.userName,
+                server: self.server
+            }));
         });
         this.client.addListener('raw', function(obj) {
             console.log(JSON.stringify(obj));
@@ -169,14 +189,14 @@ module.exports = {
     say: function(text) {
         var self = this;
         var match = text.match(/\/.+?(?=\s)/);
-        var args = this.send_cmds[((match == null)? " ": match[0])](text, self);
-            this.client.send.apply(this.client, args.args);
+        var args = this.send_cmds[((match == null) ? " " : match[0])](text, self);
+        this.client.send.apply(this.client, args.args);
         this.webContents.send('client-server', {
             action: args.action,
             args: args.args_
 
         });
-        if(args.callback) {
+        if (args.callback) {
             this[args.callback](args.from);
         }
     }
