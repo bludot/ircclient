@@ -54,34 +54,39 @@
 
 	/*
 	{
-		'room': {
-			server_url: 	'irc.example.net', // server url
-			server_name: 'server', // server netowrk name
-			server: 	true, // true || false,
-	        topic: 		"topic", // room topic
+		'server': {
+	        server_url: 	'irc.example.net', // server url
+	        server_name: 'server', // server netowrk name
 	        nick: 		"nick", // your nick in server,
-	        users: 		[
-	        				{
-			                    type: 		'ops', // type of user in plain text
-			                    code_color: '#000', // color of the user status
-			                    nick: 		"nick", // nick of the user
-	                            color:      '#000', // nick color
-			                    code: 		'@' // symbol for the user
-	                		}
-	        			], // users in room
-	        msgs: 		[
-	        				{
-	                            time:   "00:00",//time stamp
-		                        msg: 	'msg', // message
-		                        from: 	'nick' // nick from which it came
-	                    	}
-	        			] // messages in this room
-		}
+	        rooms: {
+	        'room': {
+	                server: 	true, // true || false,
+	                topic: 		"topic", // room topic
+	                active:     true, // true || false if the room is currently selected
+	                users: 		[
+	                                {
+	                                    type: 		'ops', // type of user in plain text
+	                                    code_color: '#000', // color of the user status
+	                                    nick: 		"nick", // nick of the user
+	                                    color:      '#000', // nick color
+	                                    code: 		'@' // symbol for the user
+	                                }
+	                            ], // users in room
+	                msgs: 		[
+	                                {
+	                                    time:   "00:00",//time stamp
+	                                    msg: 	'msg', // message
+	                                    from: 	'nick' // nick from which it came
+	                                }
+	                            ] // messages in this room
+	            }
+	        }
+	    }
 	}*/
 	var data = {
 	    change: function change() {
 	        if (this.msgListener.callback) {
-	            this.msgListener.callback(this);
+	            this.msgListener.updateMessages(this);
 	            this.msgListener.updateRight(this);
 	            this.msgListener.updateLeft(this);
 	            this.msgListener.updateTopic(this);
@@ -90,7 +95,10 @@
 	        return this;
 	    },
 
-	    current_room: null,
+	    current: {
+	        server: "",
+	        room: ""
+	    },
 	    data: [],
 	    msgListener: {
 	        userTypes: {
@@ -172,162 +180,282 @@
 	                return 0;
 	            });
 	        },
-	        listener: function listener() {
+	        room: function room(opt) {
+	            var room = {
+	                server: true, // true || false,
+	                topic: "", // room topic
+	                active: true,
+	                users: [], // users in room
+	                /*{
+	                    type: 		'ops', // type of user in plain text
+	                    code_color: '#000', // color of the user status
+	                    nick: 		"nick", // nick of the user
+	                    color:      '#000', // nick color
+	                    code: 		'@' // symbol for the user
+	                }*/
 
+	                msgs: [] // messages in this room
+
+	                /*{
+	                    time:   "00:00",//time stamp
+	                    msg: 	'msg', // message
+	                    from: 	'nick' // nick from which it came
+	                }*/
+	            };
+	            var keys = Object.keys(room);
+	            for (var i = 0; i < keys.length; i++) {
+	                var k = keys[i];
+	                if (opt[k] !== undefined) {
+	                    room[k] = opt[k];
+	                }
+	            }
+	            return room;
+	        },
+	        server: function server(opt, self) {
+	            var server = {
+	                server_url: "", // server url
+	                server_name: "", // server netowrk name
+	                nick: "", // your nick in server,
+	                rooms: {}
+	            };
+	            var keys = Object.keys(server);
+	            for (var i = 0; i < keys.length; i++) {
+	                var k = keys[i];
+	                if (opt[k] !== undefined) {
+	                    server[k] = opt[k];
+	                }
+	            }
+	            server.rooms[opt.server_url] = new self.room({ server: opt.server });
+	            return server;
+	        },
+	        updateRooms: function updateRooms() {
+	            this.updateLeft(data);
+	        },
+	        addMsg: function addMsg(server, to, msg, from, callbacks) {
+	            var self = this;
+	            var callbacks = callbacks;
+	            // if room doesnt exist add it
+	            if (!data.data[server].rooms[to]) {
+	                data.data[server].rooms[to] = new self.room({ server: false });
+	                // it was a new room so update the list
+	                callbacks = ["updateRooms"].concat(callbacks);
+	            }
+
+	            // we have the room at this point, add the message
+	            var time = new Date();
+	            data.data[server].rooms[to].msgs.push({
+	                time: time,
+	                msg: msg,
+	                from: from
+	            });
+
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
+	        addUsers: function addUsers() {},
+	        notice: function notice(msg, server, callbacks) {
+	            var self = this;
+	            data.current.server = server;
+	            // create the server space in data
+	            data.data[server] = new self.server({ server_url: server, server: true }, self);
+
+	            // set current server
+	            data.current.server = server;
+	            console.log(data.data);
+	            // callbacks
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
+	        join: function join(room, nick, callbacks) {
+	            var self = this;
+	            console.log(data.data);
+
+	            if (!data.data[data.current.server].rooms[room]) {
+	                data.data[data.current.server].rooms[room] = new self.room({ server: false }, self);
+	                // it was a new room so update the list
+	                callbacks = ["updateRooms"].concat(callbacks);
+	            }
+	            if (nick == data.data[data.current.server].rooms[room].nick) {} else {}
+	            /*
+	            join: obj.args[0],
+	            nick: obj.nick,
+	            server: obj.server
+	            */
+
+	            // callbacks
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
+	        connect: function connect(nick, callbacks) {
+	            var self = this;
+	            // create the server space in data
+	            //data.data[server] = new self.server({server_url: server, nick: nick, server: true}, self);
+
+	            // set current server
+	            //data.current.server = server;
+
+	            // callbacks
+	            //callbacks.forEach(e => self[e](data));
+	        },
+	        listener: function listener() {
+	            var self = this;
 	            ipcRenderer.on('client-server', function (event, arg) {
 	                console.log(arg); // prints "pong"
-	                var callback = data.msgListener.callback;
-	                var updateRight = data.msgListener.updateRight;
-	                var updateLeft = data.msgListener.updateLeft;
-	                var parseUsers = data.msgListener.parseUsers;
-	                var userSort = data.msgListener.userSort;
-	                var updateTopic = data.msgListener.updateTopic;
-	                var updateNick = data.msgListener.updateNick;
-	                var changeRoom = data.msgListener.changeRoom;
-	                if (arg.connect) {
+	                /*var callback = self.callback;
+	                var updateRight = self.updateRight;
+	                var updateLeft = self.updateLeft;
+	                var parseUsers = self.parseUsers;
+	                var userSort = self.userSort;
+	                var updateTopic = self.updateTopic;
+	                var updateNick = self.updateNick;
+	                var changeRoom = self.changeRoom;*/
+	                if (self[arg.action]) {
+
+	                    self[arg.action].apply(self, arg.args);
+	                }
+	                /*if(arg.connect) {
 	                    data.tmp_name = arg.connect;
 	                    updateNick(data);
-	                } else if (arg.rpl_topic) {
+	                } else if(arg.rpl_topic) {
 	                    data.data[data.current_room].topic = arg.rpl_topic;
 	                    updateTopic(data);
-	                } else if (arg.msg) {
+	                } else if(arg.msg) {
 	                    var room = arg.room;
-	                    if (room == data.tmp_name) {
-	                        room = arg.from; //arg.from = data.tmp_name;
+	                    if(room == data.tmp_name) {
+	                        room = arg.from;//arg.from = data.tmp_name;
 	                    }
-	                    if (!data.data[room]) {
-	                        data.data[room] = {
-	                            room: room,
-	                            server: false,
-	                            topic: "",
-	                            server_name: arg.server,
-	                            nick: data.tmp_name,
-	                            users: [],
-	                            msgs: []
-	                        };
-	                        updateLeft(data);
-	                    }
-
+	                  if(!data.data[room]) {
+	                    data.data[room] = {
+	                        room: room,
+	                        server: false,
+	                        topic: "",
+	                        server_name: arg.server,
+	                        nick: data.tmp_name,
+	                        users: [],
+	                        msgs: []
+	                    };
+	                    updateLeft(data);
+	                  }
 	                    var time = new Date();
 	                    data.data[room].msgs.push({
 	                        time: time,
 	                        msg: arg.msg,
 	                        from: arg.from
 	                    });
-
-	                    callback(data);
-	                    if (arg.from == room) {
+	                      callback(data);
+	                    if(arg.from == room) {
 	                        updateLeft(data);
 	                        changeRoom(room);
 	                        updateLeft(data);
 	                    }
 	                    //updateRight(data.data);
-	                } else if (arg.users) {
-	                        if (!data.data[data.current_room].users || data.data[data.current_room].users.length < 2) {
-	                            data.data[data.current_room].users = parseUsers(arg.users);
-	                        } else {
-	                            var users = userSort(data.data[data.current_room].users.concat(parseUsers(arg.users)));
-	                            console.log("more users!");
-	                            console.log(users);
-	                            data.data[data.current_room].users = users;
+	                } else if(arg.users) {
+	                    if(!data.data[data.current_room].users || data.data[data.current_room].users.length < 2) {
+	                        data.data[data.current_room].users = parseUsers(arg.users);
+	                } else {
+	                    var users = userSort(data.data[data.current_room].users.concat(parseUsers(arg.users)));
+	                    console.log("more users!");
+	                    console.log(users);
+	                    data.data[data.current_room].users = users;
+	                }
+	                  console.log("got users");
+	                  updateRight(data);
+	                } else if(arg.join) {
+	                  data.current_room = arg.join;
+	                  if(!data.data[arg.join]) {
+	                    data.data[arg.join] = {
+	                        server: false,
+	                        server_name: arg.server,
+	                        nick: data.tmp_name,
+	                        room: arg.join,
+	                        topic: "",
+	                        active: true,
+	                        users: [],
+	                        msgs: []
+	                    };
+	                    data.data[data.last_active].active = false;
+	                    data.last_active = arg.join;
+	                    updateLeft(data);
+	                    callback(data);
+	                } else {
+	                    var users = userSort(data.data[data.current_room].users.concat(parseUsers([arg.nick])));
+	                    data.data[arg.join].users = users;
+	                    var time = new Date();
+	                    data.data[arg.join].msgs.push({
+	                        time: time,
+	                        msg: arg.nick+" has joined",
+	                        from: "-"
+	                    });
+	                    updateRight(data);
+	                    callback(data);
+	                }
+	                } else if(arg.nick) {
+	                if(data.tmp_name == arg.old) {
+	                    data.tmp_name = arg.nick;
+	                }
+	                var nick = arg.nick;
+	                var old = arg.old;
+	                for(var i in data.data) {
+	                    var room = data.data[i];
+	                    room.users = room.users.map(function(user) {
+	                        if(user.nick == old) {
+	                            user.nick = nick;
 	                        }
-	                        console.log("got users");
-	                        updateRight(data);
-	                    } else if (arg.join) {
-	                        data.current_room = arg.join;
-	                        if (!data.data[arg.join]) {
-	                            data.data[arg.join] = {
-	                                server: false,
-	                                server_name: arg.server,
-	                                nick: data.tmp_name,
-	                                room: arg.join,
-	                                topic: "",
-	                                active: true,
-	                                users: [],
-	                                msgs: []
-	                            };
-	                            data.data[data.last_active].active = false;
-	                            data.last_active = arg.join;
-	                            updateLeft(data);
-	                            callback(data);
-	                        } else {
-	                            var users = userSort(data.data[data.current_room].users.concat(parseUsers([arg.nick])));
-	                            data.data[arg.join].users = users;
-	                            var time = new Date();
-	                            data.data[arg.join].msgs.push({
-	                                time: time,
-	                                msg: arg.nick + " has joined",
-	                                from: "-"
-	                            });
-	                            updateRight(data);
-	                            callback(data);
+	                        return user;
+	                    })
+	                    data.data[i] = room;
+	                }
+	                updateRight(data);
+	                } else if(arg.quit) {
+	                var time = new Date();
+	                data.data[data.current_room].msgs.push({
+	                    time: time,
+	                    msg: arg.quit[0]+" quit - "+arg.quit[1],
+	                    from: "-"
+	                });
+	                callback(data);
+	                var nick = arg.quit[0];
+	                for(var i in data.data) {
+	                    data.data[i].users = data.data[i].users.map(function(a) {
+	                        if(a.nick != nick) {
+	                            return a;
 	                        }
-	                    } else if (arg.nick) {
-	                        if (data.tmp_name == arg.old) {
-	                            data.tmp_name = arg.nick;
-	                        }
-	                        var nick = arg.nick;
-	                        var old = arg.old;
-	                        for (var i in data.data) {
-	                            var room = data.data[i];
-	                            room.users = room.users.map(function (user) {
-	                                if (user.nick == old) {
-	                                    user.nick = nick;
-	                                }
-	                                return user;
-	                            });
-	                            data.data[i] = room;
-	                        }
-	                        updateRight(data);
-	                    } else if (arg.quit) {
-	                        var time = new Date();
-	                        data.data[data.current_room].msgs.push({
-	                            time: time,
-	                            msg: arg.quit[0] + " quit - " + arg.quit[1],
-	                            from: "-"
-	                        });
-	                        callback(data);
-	                        var nick = arg.quit[0];
-	                        for (var i in data.data) {
-	                            data.data[i].users = data.data[i].users.map(function (a) {
-	                                if (a.nick != nick) {
-	                                    return a;
-	                                }
-	                            }).filter(function (e) {
-	                                return e;
-	                            });
-	                        }
-	                        //data.data[data.current_room].users.splice(data.data[data.current_room].users.indexOf(arg.quit[0]), 1);
-
-	                        updateRight(data);
-	                    } else if (arg.notice) {
-	                        if (!data.data[arg.server]) {
-	                            data.data[arg.server] = {
-	                                room: arg.server,
-	                                nick: data.tmp_name,
-	                                active: true,
-	                                server: true,
-	                                topic: "",
-	                                server_name: arg.server,
-	                                users: [],
-	                                msgs: []
-	                            };
-	                            data.last_active = arg.server;
-	                        }
-	                        var time = new Date();
-	                        data.data[arg.server].msgs.push({
-	                            time: time,
-	                            msg: arg.notice[1],
-	                            from: arg.notice[1]
-	                        });
-	                        updateLeft(data);
-	                    } else if (arg.rpl_isupport) {
-	                        data.data[arg.server].server_name = arg.rpl_isupport.find(function (obj) {
-	                            return obj.indexOf("NETWORK=") != -1;
-	                        }).substr(8);
-	                        data.data[arg.server].room = data.data[arg.server].server_name;
-	                        updateLeft(data);
-	                    }
+	                    }).filter(e => e);
+	                }
+	                //data.data[data.current_room].users.splice(data.data[data.current_room].users.indexOf(arg.quit[0]), 1);
+	                  updateRight(data);
+	                } else if(arg.notice) {
+	                if(!data.data[arg.server]) {
+	                    data.data[arg.server] = {
+	                    room: arg.server,
+	                    nick: data.tmp_name,
+	                    active: true,
+	                    server: true,
+	                    topic: "",
+	                    server_name: arg.server,
+	                    users: [],
+	                    msgs: []
+	                };
+	                data.last_active = arg.server;
+	                }
+	                var time = new Date();
+	                data.data[arg.server].msgs.push({
+	                    time: time,
+	                    msg: arg.notice[1],
+	                    from: arg.notice[1]
+	                });
+	                updateLeft(data);
+	                } else if(arg.rpl_isupport) {
+	                data.data[arg.server].server_name = arg.rpl_isupport.find(function(obj) {
+	                    return obj.indexOf("NETWORK=") != -1;
+	                }).substr(8);
+	                data.data[arg.server].room = data.data[arg.server].server_name;
+	                updateLeft(data);
+	                }
+	                */
 	            });
 	            return true;
 	        },
@@ -348,7 +476,7 @@
 	        };
 	    },
 	    componentDidMount: function componentDidMount() {
-	        this.props.data.msgListener.set('callback', this.updateHandler);
+	        this.props.data.msgListener.set('updateMessages', this.updateHandler);
 	        //this.props.data.msgListener.listener();
 	    },
 	    updateHandler: function updateHandler(data) {
@@ -370,14 +498,14 @@
 
 	                console.log("the color");
 	                console.log(_from);
-	                console.log(state_data[room]);
-	                console.log(state_data[room].users);
+	                console.log(room);
+	                console.log(room.users);
 	                var color = "#aaa";
-	                if (state_data[room].users.length > 0) {
-	                    if (state_data[room].users.find(function (a) {
+	                if (room.users.length > 0) {
+	                    if (room.users.find(function (a) {
 	                        return a.nick == _from;
 	                    })) {
-	                        color = state_data[room].users.find(function (a) {
+	                        color = room.users.find(function (a) {
 	                            return a.nick == _from;
 	                        }).color;
 	                    }
@@ -387,12 +515,12 @@
 	                var message = msg.msg.split(' ').map(function (a) {
 	                    var tmp_nick;
 	                    var space = String.fromCharCode(32);
-	                    if (tmp_nick = state_data[room].users.find(function (b) {
+	                    if (tmp_nick = room.users.find(function (b) {
 	                        return a == b.nick;
 	                    })) {
 	                        return React.createElement(
 	                            'span',
-	                            { style: { color: tmp_nick.color } },
+	                            { style: { color: tmp_nick.color, fontWeight: '600' } },
 	                            tmp_nick.nick + space
 	                        );
 	                    } else {
@@ -433,18 +561,18 @@
 	        };
 
 	        var roomsNodes = function roomsNodes() {
-	            console.log(state_data);
 
 	            var nodes = [];
 	            for (var i in state_data) {
-	                console.log(state_data[i]);
-	                var messages = messageNodes(i, state_data[i].msgs);
-	                var active = state_data[i].active ? "active" : "";
-	                nodes.push(React.createElement(
-	                    'ul',
-	                    { 'data-room': i, className: active },
-	                    messages
-	                ));
+	                for (var j in state_data[i].rooms) {
+	                    var messages = messageNodes(state_data[i].rooms[j], state_data[i].rooms[j].msgs);
+	                    var active = state_data[i].rooms[j].active ? "active" : "";
+	                    nodes.push(React.createElement(
+	                        'ul',
+	                        { 'data-room': j, className: active },
+	                        messages
+	                    ));
+	                }
 	            }
 	            return nodes;
 	        };
@@ -531,7 +659,7 @@
 	            };
 	            if (sel.suggestText && sel.suggestText.length > 1) {
 	                var postFix = sel.isAtStart ? ': ' : ' ';
-	                var users = this.state.data.data[this.state.data.current_room].users;
+	                var users = this.state.data.data[this.state.data.current.server].rooms[this.state.data.current.room].users;
 	                for (var i in users) {
 	                    if (users[i].nick.substring(0, sel.suggestText.length).toLowerCase() === sel.suggestText) {
 	                        input.value = input.value.substring(0, sel.start - sel.suggestText.length) + users[i].nick + postFix + input.value.substring(sel.start);
@@ -635,9 +763,9 @@
 	        //node.scrollTop = node.scrollHeight;
 	    },
 	    changeRoom: function changeRoom(room) {
-	        this.props.data.data[this.props.data.current_room].active = false;
-	        this.props.data.current_room = room;
-	        this.props.data.data[room].active = true;
+	        this.props.data.data[this.props.data.current.server].rooms[this.props.data.current.room].active = false;
+	        this.props.data.current.room = room;
+	        this.props.data.data[this.props.data.current.server].rooms[room].active = true;
 	        ipcRenderer.send('client-server', {
 	            action: 'irc.changeChannel',
 	            data: {
@@ -659,14 +787,16 @@
 	        var rooms = [];
 	        for (var i in state_data.data) {
 	            //var style = {'background': ''+user.color+''};
-	            var server = state_data.data[i].server;
-	            var active = state_data.data[i].active;
-	            var classname = "room_list" + (server ? " server" : "") + (active ? " active" : "");
-	            rooms.push(React.createElement(
-	                'li',
-	                { className: classname, 'data-room': i, onClick: this.changeRoom.bind(this, i) },
-	                state_data.data[i].room
-	            ));
+	            for (var j in state_data.data[i].rooms[j]) {
+	                var server = state_data.data[i].rooms[j].server_name;
+	                var active = state_data.data[i].rooms[j].active;
+	                var classname = "room_list" + (server ? " server" : "") + (active ? " active" : "");
+	                rooms.push(React.createElement(
+	                    'li',
+	                    { className: classname, 'data-room': i, onClick: this.changeRoom.bind(this, j) },
+	                    state_data.data[i].rooms[room].room
+	                ));
+	            }
 	        }
 	        console.log(rooms);
 	        return React.createElement(

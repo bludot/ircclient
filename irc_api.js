@@ -3,10 +3,10 @@ var irc = require('irc');
 module.exports = {
     rpl_cmds: {
         'rpl_motd': function(obj) {
+            // server, to, msg, from, callbacks
             return {
-                room: obj.server,
-                from: obj.server,
-                msg: obj.args[1]
+                action: 'addMsg',
+                args: [obj.server, obj.server, obj.args[1], obj.server, ["updateMessages"]]
             };
         },
         'PRIVMSG': function(obj) {
@@ -14,61 +14,71 @@ module.exports = {
             if (obj.args[1].substr(0, 12).indexOf("ACTION") != -1) {
 
                 return {
+                    action: 'actionMsg',
                     room: obj.args[0],
                     from: obj.nick,
-                    msg: obj.args[1]
+                    msg: obj.args[1],
+                    server: obj.server
                 };
             } else {
+                // server, to, msg, from, callbacks
                 return {
-                    room: obj.args[0],
-                    from: obj.nick,
-                    msg: obj.args[1]
+                    action: 'addMsg',
+                    args: [obj.server, obj.args[0], obj.args[1], obj.nick, ["updateMessages"]]
                 };
             }
         },
         'rpl_namreply': function(obj) {
             console.log(obj.args[3].split(" "));
             return {
+                action: 'addUsers',
                 users: obj.args[3].split(" ")
             }
         },
         'JOIN': function(obj) {
             return {
-                join: obj.args[0],
-                nick: obj.nick,
-                server: obj.server
+                action: 'join',
+                args: [obj.args[0], obj.nick, []]
             };
         },
         'QUIT': function(obj) {
             return {
+                action: 'quit',
                 quit: [obj.nick, obj.args[0]]
             }
         },
         'NOTICE': function(obj) {
             return {
-                notice: obj.args,
-                server: obj.server
+                action: 'notice',
+                args: [obj.args, obj.server, []]
             };
         },
         'rpl_isupport': function(obj) {
             return {
+                action: 'isupport',
                 rpl_isupport: obj.args,
                 server: obj.server
             };
         },
         'connect': function(obj) {
             return {
-                connect: obj.username
+                action: 'connect',
+                args: [obj.username, obj.server, ["updateNick"]]
             };
         },
         'NICK': function(obj) {
             return {
+                action: 'nick',
                 nick: obj.args[0],
                 old: obj.nick
             }
         },
         'rpl_topic': function(obj) {
-            return {rpl_topic: obj.args[2], server: obj.server};
+            return {
+                action: 'topic',
+                rpl_topic: obj.args[2],
+                server: obj.server
+            };
         }/*,
         'rpl_welcome': function(obj) {
             return {rpl_welcome: obj.args[0], server: obj.server, msg: obj.args[1]};
