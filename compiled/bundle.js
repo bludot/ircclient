@@ -233,11 +233,49 @@
 	            });
 	            return server;
 	        },
+	        changeNick: function changeNick(server, old, new_, callbacks) {
+	            var self = this;
+	            if (old == data.current.nicks[server].nick) {
+	                data.current.nicks[server].nick = new_;
+	            }
+	            var old_nick = old;
+	            var new_nick = new_;
+	            for (var i in data.data[server].rooms) {
+	                data.data[server].rooms[i].users = data.data[server].rooms[i].users.map(function (e) {
+	                    if (e.nick == old_nick) {
+	                        e.nick = new_nick;
+	                    }
+	                    return e;
+	                });
+	                data.data[server].rooms[i].nick = new_nick;
+	            }
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
+	        changeRoom: function changeRoom(room, callbacks) {
+	            var self = this;
+	            console.log(room);
+	            data.data[data.current.server].rooms[data.current.room].active = false;
+	            data.current.room = room;
+	            data.data[data.current.server].rooms[room].active = true;
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
+	        setTopic: function setTopic(server, room, topic, callbacks) {
+	            var self = this;
+	            data.data[server].rooms[room].topic = topic;
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
 	        actionMsg: function actionMsg(server, to, msg, from, callbacks) {
 	            var self = this;
 	            var callbacks = callbacks;
 	            // if room doesnt exist add it
 	            var to = to;
+
 	            if (to == data.current.nicks[server].nick) {
 	                to = from;
 	            }
@@ -269,15 +307,16 @@
 	            // if room doesnt exist add it
 	            var to = to;
 	            if (to == data.current.nicks[server].nick) {
+	                console.log("current nick match");
 	                to = from;
 	            }
 	            if (!data.data[server].rooms[to]) {
-	                data.data[server].rooms[to] = new self.room({
+	                /*data.data[server].rooms[to] = new self.room({
 	                    server: false
-	                });
+	                });*/
 	                // it was a new room so update the list
 	                callbacks = ["updateRooms"].concat(callbacks);
-	                self.join(to, data.current.nicks[server].nick, []);
+	                self.join(to, data.current.nicks[server].nick, ["updateRooms"]);
 	            }
 
 	            // we have the room at this point, add the message
@@ -291,6 +330,7 @@
 	            callbacks.forEach(function (e) {
 	                return self[e](data);
 	            });
+	            console.log(data);
 	        },
 	        addUsers: function addUsers(server, room, users, callbacks) {
 	            var self = this;
@@ -351,7 +391,7 @@
 	                callbacks.forEach(function (e) {
 	                    return self[e](data);
 	                });
-	                self.changeRoom(room);
+	                self.changeRoom.apply(self, [room, ["updateRooms"]]);
 	            }
 	            if (nick) {
 	                if (nick == data.data[data.current.server].rooms[room].nick) {} else {
@@ -370,12 +410,16 @@
 
 	            // callbacks
 	        },
+	        //updateNick:
 	        connect: function connect(nick, server, callbacks) {
 	            var self = this;
 	            data.current.server = server;
 	            data.current.nicks[server] = {
 	                nick: nick
 	            };
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
 	        },
 	        listener: function listener() {
 	            var self = this;
@@ -752,7 +796,7 @@
 	        return true;
 	    },
 	    render: function render() {
-	        var nick = this.state.data.tmp_name || "nick";
+	        var nick = (this.state.data.current.nicks[this.state.data.current.server] || { nick: "nick" }).nick;
 	        return React.createElement(
 	            'div',
 	            { className: 'msg-input' },
@@ -831,7 +875,7 @@
 	    },
 	    componentDidMount: function componentDidMount() {
 	        this.props.data.msgListener.set('updateRooms', this.updateHandler);
-	        this.props.data.msgListener.set('changeRoom', this.changeRoom);
+	        //this.props.data.msgListener.set('changeRoom', this.changeRoom);
 	        //
 	    },
 	    updateHandler: function updateHandler(data) {
@@ -844,9 +888,7 @@
 	    },
 	    changeRoom: function changeRoom(room) {
 	        console.log("changing rooms");
-	        this.props.data.data[this.props.data.current.server].rooms[this.props.data.current.room].active = false;
-	        this.props.data.current.room = room;
-	        this.props.data.data[this.props.data.current.server].rooms[room].active = true;
+	        console.log(room);
 	        ipcRenderer.send('client-server', {
 	            action: 'irc.changeChannel',
 	            data: {
@@ -854,11 +896,10 @@
 	            }
 	        });
 
-	        this.props.data.change();
-	        this.setState({
+	        /*this.setState({
 	            data: this.props.data.change()
 	        });
-	        console.log(this.state.data);
+	        console.log(this.state.data);*/
 	    },
 	    render: function render() {
 
@@ -982,16 +1023,16 @@
 	    render: function render() {
 	        var topic = React.createElement('span', null);
 	        var room = React.createElement('span', null);
-	        if (this.props.data.data[this.props.data.current_room]) {
+	        if (this.state.data.current.server) {
 	            topic = React.createElement(
 	                'span',
 	                null,
-	                this.props.data.data[this.props.data.current_room].topic
+	                this.props.data.data[this.state.data.current.server].rooms[this.state.data.current.room].topic
 	            );
 	            room = React.createElement(
 	                'span',
 	                null,
-	                this.props.data.data[this.props.data.current_room].room
+	                this.state.data.current.room
 	            );
 	        }
 	        return React.createElement(

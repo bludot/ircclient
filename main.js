@@ -84,6 +84,7 @@ var actions = {
 
         },
         changeChannel: function(data) {
+            console.log(data);
             irc_api.changeChannel(data.room);
         }
     }

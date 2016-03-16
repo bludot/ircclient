@@ -72,15 +72,25 @@ module.exports = {
         },
         'NICK': function(obj) {
             return {
-                action: 'nick',
+                action: 'changeNick',
                 nick: obj.args[0],
-                old: obj.nick
+                old: obj.nick,
+                args:[obj.server, obj.nick, obj.args[0], ["updateUsers", "updateNick", "updateMessages"]]
             }
         },
         'rpl_topic': function(obj) {
                 return {
-                    action: 'topic',
-                    rpl_topic: obj.args[2],
+                    action: 'setTopic',
+                    args: [obj.server, obj.args[1], obj.args[2], ["updateTopic"]],
+                    rpl_topic: obj.args[1],
+                    server: obj.server
+                };
+            },
+            'TOPIC': function(obj) {
+                return {
+                    action: 'setTopic',
+                    args: [obj.server, obj.args[0], obj.args[1], ["updateTopic"]],
+                    rpl_topic: obj.args[1],
                     server: obj.server
                 };
             }
@@ -120,25 +130,23 @@ module.exports = {
             }
         },
         '/nick': function(obj, self) {
+            var old_nick = self.userName;
+            self.userName = obj.substr(6).split(' ')[0];
             return {
                 args: ['NICK', obj.substr(6).split(' ')[0]],
                 msg: obj.substr(6).split(' ')[0],
                 channel: self.channel,
-                from: self.userName //obj.substr(5).split(' ')[0],
+                from: old_nick //obj.substr(5).split(' ')[0],
             }
         },
         '/msg': function(obj, self) {
             var channels = obj.substr(5).split(' ')[0];
-            self.channel = channels;
+            self.channel = obj.substr(5).split(' ')[0];
             return {
                 action: "addMsg",
                 args: ['PRIVMSG', obj.substr(5).split(' ')[0], obj.substr(channels.length + 5)],
-                msg: obj.substr(channels.length + 5),
-                channel: obj.substr(5).split(' ')[0],
-                from: self.userName,
                 // server, to, msg, from, callbacks
-                args_: [self.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateRooms"]],
-                callback: "changeChannel"
+                args_: [self.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateRooms"]]
             }
         },
         ' ': function(obj, self) {
@@ -153,7 +161,13 @@ module.exports = {
         }
     },
     changeChannel: function(channel) {
+        console.log("changing something")
+        console.log(channel);
         this.channel = channel;
+        this.webContents.send('client-server', {
+            action: 'changeRoom',
+            args: [channel, ['updateRooms', 'updateMessages', 'updateUsers']]
+        });
     },
     start: function(server, username, realName, channels, webContents, port) {
         var webContents = this.webContents = webContents;
