@@ -166,7 +166,7 @@ module.exports = {
         this.channel = channel;
         this.webContents.send('client-server', {
             action: 'changeRoom',
-            args: [channel, ['updateRooms', 'updateMessages', 'updateUsers']]
+            args: [channel, ['updateRooms', 'updateMessages', 'updateUsers', 'updateTopic']]
         });
     },
     start: function(server, username, realName, channels, webContents, port) {
