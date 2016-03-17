@@ -199,7 +199,7 @@ var data = {
             var room = {
                 server: true, // true || false,
                 topic: "", // room topic
-                active: true,
+                active: false,
                 users: [], // users in room
                 /*{
                     type: 		'ops', // type of user in plain text
@@ -265,6 +265,7 @@ var data = {
         },
         changeRoom: function(room, callbacks) {
             var self = this;
+            var room = room.toLowerCase();
             console.log(room);
             data.data[data.current.server].rooms[data.current.room].active = false;
             data.current.room = room;
@@ -273,6 +274,7 @@ var data = {
         },
         setTopic: function(server, room, topic, callbacks) {
             var self = this;
+            var room = room.toLowerCase();
             data.data[server].rooms[room].topic = topic;
             callbacks.forEach(e => self[e](data));
         },
@@ -282,8 +284,9 @@ var data = {
             // if room doesnt exist add it
             var to = to.toLowerCase();
 
-            if(to == data.current.nicks[server].nick) {
-                to = from;
+
+            if(to == data.current.nicks[server].nick.toLowerCase()) {
+                to = from.toLowerCase();
             }
             if (!data.data[server].rooms[to]) {
                 /*data.data[server].rooms[to] = new self.room({
@@ -291,7 +294,7 @@ var data = {
                 });*/
                 // it was a new room so update the list
                 callbacks = ["updateRooms"].concat(callbacks);
-                self.join(to, data.current.nicks[server].nick, []);
+                //self.join(to, data.current.nicks[server].nick, []);
             }
 
             // we have the room at this point, add the message
@@ -311,9 +314,9 @@ var data = {
             var callbacks = callbacks;
             // if room doesnt exist add it
             var to = to.toLowerCase();
-            if(to == data.current.nicks[server].nick) {
+            if(to == data.current.nicks[server].nick.toLowerCase()) {
                 console.log("current nick match");
-                to = from;
+                to = from.toLowerCase();
             }
             if (!data.data[server].rooms[to]) {
                 console.log("room doesnt exist");
@@ -322,7 +325,7 @@ var data = {
                 });
                 // it was a new room so update the list
                 callbacks = ["updateRooms"].concat(callbacks);
-                self.join(to, data.current.nicks[server].nick, ["updateRooms"]);
+                //self.join(to, data.current.nicks[server].nick, ["updateRooms"]);
             }
 
             // we have the room at this point, add the message
@@ -339,6 +342,7 @@ var data = {
         },
         addUsers: function(server, room, users, callbacks) {
             var self = this;
+            var room = room.toLowerCase();
             if (!data.data[server].rooms[room].users || data.data[server].rooms[room].users.length < 2) {
                 data.data[server].rooms[room].users = self.parseUsers(users);
             } else {
@@ -385,10 +389,12 @@ var data = {
             if (!data.data[data.current.server].rooms[room]) {
                 //data.data[data.current.server].rooms[data.current.room].active = false;
                 data.data[data.current.server].rooms[room] = new self.room({
-                    server: false
+                    server: false,
+                    active: true
                 }, self);
                 //data.current.room = room;
                 // it was a new room so update the list
+
                 callbacks = ["updateRooms", "updateMessages"].concat(callbacks);
                 callbacks.forEach(e => self[e](data));
                 self.changeRoom.apply(self, [room, ["updateRooms"]]);
@@ -420,6 +426,7 @@ var data = {
             data.current.nicks[server] = {
                 nick: nick
             };
+            data.data[data.current.server].rooms[data.current.room].active = true;
             callbacks.forEach(e => self[e](data));
         },
         listener: function() {
