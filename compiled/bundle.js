@@ -52,37 +52,91 @@
 	var React = __webpack_require__(12);
 	var ReactDom = __webpack_require__(174);
 
-	/*
-	{
-		'server': {
-	        server_url: 	'irc.example.net', // server url
-	        server_name: 'server', // server netowrk name
-	        nick: 		"nick", // your nick in server,
-	        rooms: {
-	        'room': {
-	                server: 	true, // true || false,
-	                topic: 		"topic", // room topic
-	                active:     true, // true || false if the room is currently selected
-	                users: 		[
-	                                {
-	                                    type: 		'ops', // type of user in plain text
-	                                    code_color: '#000', // color of the user status
-	                                    nick: 		"nick", // nick of the user
-	                                    color:      '#000', // nick color
-	                                    code: 		'@' // symbol for the user
-	                                }
-	                            ], // users in room
-	                msgs: 		[
-	                                {
-	                                    time:   "00:00",//time stamp
-	                                    msg: 	'msg', // message
-	                                    from: 	'nick' // nick from which it came
-	                                }
-	                            ] // messages in this room
-	            }
+	var trigger = function trigger(data) {
+	    var mouseup = function mouseup(e) {
+	        var changeNode = window.positions.affect.node;
+	        var change_ = window.positions.affect.change(e.pageX || e.touches[0].pageX, window.positions.org);
+	        changeNode.style[window.positions.affect.style] = window.positions.node.clientWidth + "px";
+
+	        console.log(change_);
+
+	        window.positions.node.style.width = window.positions.width + change_ + "px";
+	        delete window.positions;
+	        window.removeEventListener('mousemove', mousemove, false);
+	        window.removeEventListener('mouseup', mouseup, false);
+	        window.removeEventListener('touchmove', mousemove, false);
+	        window.removeEventListener('touchend', mouseup, false);
+	        console.log(window.positions);
+	    };
+	    var mousemove = function mousemove(e) {
+
+	        var changeNode = window.positions.affect.node;
+	        var change_ = window.positions.affect.change(e.pageX || e.touches[0].pageX, window.positions.org);
+	        changeNode.style[window.positions.affect.style] = window.positions.node.clientWidth + "px";
+
+	        console.log(change_);
+
+	        window.positions.node.style.width = window.positions.width + change_ + "px";
+	    };
+	    var mousedown = function mousedown(e) {
+	        if (!window.positions) {
+	            window.positions = {
+	                org: e.pageX || e.touches[0].pageX,
+	                width: parseInt(this.data.node.clientWidth),
+	                affect: this.data.affect,
+	                node: this.data.node
+	            };
 	        }
+	        window.addEventListener('mousemove', mousemove, false);
+	        window.addEventListener('touchmove', mousemove, false);
+	        window.addEventListener('mouseup', mouseup, false);
+	        window.addEventListener('touchend', mouseup, false);
+	    };
+	    for (var i = 0; i < data.node.length; i++) {
+	        var trigger = document.createElement('div');
+	        trigger.className = "trigger";
+	        for (var j in data.style) {
+	            trigger.style[j] = data.style[j];
+	        }
+	        data.node[i].appendChild(trigger);
+	        data.node[i].querySelector('.trigger').data = {
+	            node: data.node[i],
+	            affect: data.affect
+	        };
+	        data.node[i].querySelector('.trigger').addEventListener('mousedown', mousedown, false);
+	        data.node[i].querySelector('.trigger').addEventListener('touchstart', mousedown, false);
 	    }
-	}*/
+	}; /*
+	   {
+	   'server': {
+	         server_url: 	'irc.example.net', // server url
+	         server_name: 'server', // server netowrk name
+	         nick: 		"nick", // your nick in server,
+	         rooms: {
+	         'room': {
+	                 server: 	true, // true || false,
+	                 topic: 		"topic", // room topic
+	                 active:     true, // true || false if the room is currently selected
+	                 users: 		[
+	                                 {
+	                                     type: 		'ops', // type of user in plain text
+	                                     code_color: '#000', // color of the user status
+	                                     nick: 		"nick", // nick of the user
+	                                     color:      '#000', // nick color
+	                                     code: 		'@' // symbol for the user
+	                                 }
+	                             ], // users in room
+	                 msgs: 		[
+	                                 {
+	                                     time:   "00:00",//time stamp
+	                                     msg: 	'msg', // message
+	                                     from: 	'nick' // nick from which it came
+	                                 }
+	                             ] // messages in this room
+	             }
+	         }
+	     }
+	   }*/
 	var data = {
 	    change: function change() {
 	        if (this.msgListener.updateMessages) {
@@ -280,9 +334,9 @@
 	                to = from;
 	            }
 	            if (!data.data[server].rooms[to]) {
-	                data.data[server].rooms[to] = new self.room({
+	                /*data.data[server].rooms[to] = new self.room({
 	                    server: false
-	                });
+	                });*/
 	                // it was a new room so update the list
 	                callbacks = ["updateRooms"].concat(callbacks);
 	                self.join(to, data.current.nicks[server].nick, []);
@@ -311,6 +365,7 @@
 	                to = from;
 	            }
 	            if (!data.data[server].rooms[to]) {
+	                console.log("room doesnt exist");
 	                /*data.data[server].rooms[to] = new self.room({
 	                    server: false
 	                });*/
@@ -350,10 +405,12 @@
 	            var self = this;
 
 	            // create the server space in data
-	            data.data[server] = new self.server({
-	                server_url: server,
-	                server: true
-	            }, self);
+	            if (!data.data[server]) {
+	                data.data[server] = new self.server({
+	                    server_url: server,
+	                    server: true
+	                }, self);
+	            }
 
 	            // set current server
 	            data.current.room = server;
@@ -367,10 +424,14 @@
 	            var self = this;
 
 	            for (var i in data.data[data.current.server].rooms) {
+	                if (data.data[data.current.server].rooms[i].users.find(function (e) {
+	                    return e.nick == nick;
+	                })) {
+	                    self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
+	                };
 	                data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(function (e) {
 	                    return e.nick != nick;
 	                });
-	                self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
 	            }
 	            var callbacks = ["updateMessages", "updateUsers"];
 	            callbacks.forEach(function (e) {
@@ -1058,7 +1119,7 @@
 
 	        var mainAreaNodes = {
 	            rooms: React.createElement(Rooms, { data: this.props.data }),
-	            mainArea: React.createElement(MainArea, { data: this.props.data }),
+	            mainArea: React.createElement(MainArea, { className: 'mainarea', data: this.props.data }),
 	            users: React.createElement(Users, { data: this.props.data })
 	        };
 	        var mainarea = this.props.data.view.layout.map(function (a) {
@@ -1083,6 +1144,33 @@
 	ReactDom.render(React.createElement(App, { data: data
 	}), document.getElementById('react-root'));
 	data.msgListener.listener();
+
+	trigger({
+	    node: [document.querySelector('.left_side')],
+	    style: {
+	        right: 0
+	    },
+	    affect: {
+	        node: document.querySelector('.MainArea'),
+	        style: "left",
+	        change: function change(a, b) {
+	            return a - b;
+	        }
+	    }
+	});
+	trigger({
+	    node: [document.querySelector('.right_side')],
+	    style: {
+	        left: 0
+	    },
+	    affect: {
+	        node: document.querySelector('.MainArea'),
+	        style: "right",
+	        change: function change(a, b) {
+	            return b - a;
+	        }
+	    }
+	});
 
 /***/ },
 /* 1 */

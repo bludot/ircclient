@@ -1,6 +1,9 @@
 var irc = require('irc');
 
 module.exports = {
+    clients: {
+
+    },
     rpl_cmds: {
         'rpl_motd': function(obj) {
             // server, to, msg, from, callbacks

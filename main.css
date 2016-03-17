@@ -109,7 +109,7 @@
 }
 
 body {
-  background:#EEEEEE;
+  background:#28282D;
   font-family:'Roboto', sans-serif;
   color:#444;
   font-size: 16px;
@@ -361,4 +361,21 @@ li.room_list.active {
 .topic span:nth-child(2) {
     font-weight: 300;
     color: #CECECE;
+}
+.trigger {
+  position: absolute;
+  width: 5px;
+  top: 0;
+  bottom: 0;
+  background: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: ew-resize;
+}
+.trigger:hover {
+    background: rgba(0,0,0,0.26);
 }
