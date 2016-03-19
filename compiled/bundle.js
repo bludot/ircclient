@@ -461,12 +461,12 @@
 	                return self[e](data);
 	            });
 	        },
-	        join: function join(room, nick, callbacks) {
+	        join: function join(server, room, nick, callbacks) {
 	            var self = this;
 	            var room = room.toLowerCase();
-	            if (!data.data[data.current.server].rooms[room]) {
+	            if (!data.data[server].rooms[room]) {
 	                //data.data[data.current.server].rooms[data.current.room].active = false;
-	                data.data[data.current.server].rooms[room] = new self.room({
+	                data.data[server].rooms[room] = new self.room({
 	                    server: false,
 	                    active: true,
 	                    name: room
@@ -478,12 +478,12 @@
 	                callbacks.forEach(function (e) {
 	                    return self[e](data);
 	                });
-	                self.changeRoom.apply(self, [data.current.server, room, ["updateRooms"]]);
+	                self.changeRoom.apply(self, [server, room, ["updateRooms"]]);
 	            }
 	            if (nick) {
-	                if (nick == data.data[data.current.server].rooms[room].nick) {} else {
-	                    self.addUsers.apply(self, [data.current.server, room, [nick], ["updateUsers"]]);
-	                    self.addMsg.apply(self, [data.current.server, room, nick + " has joined the channel", "-", ["updateMessages"]]);
+	                if (nick == data.data[server].rooms[room].nick) {} else {
+	                    self.addUsers.apply(self, [server, room, [nick], ["updateUsers"]]);
+	                    self.addMsg.apply(self, [server, room, nick + " has joined the channel", "-", ["updateMessages"]]);
 	                    callbacks.forEach(function (e) {
 	                        return self[e](data);
 	                    });

@@ -85,7 +85,7 @@ module.exports = {
                 'JOIN': function(obj) {
                     return {
                         action: 'join',
-                        args: [obj.args[0], obj.nick, []]
+                        args: [obj.server, obj.args[0], obj.nick, []]
                     };
                 },
                 'QUIT': function(obj) {
