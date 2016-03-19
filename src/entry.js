@@ -145,7 +145,7 @@ var data = {
         },
         hashColor: function(str) {
             for (var i = 0, hash = 0; i < str.length; hash = str.charCodeAt(i++) + ((hash << 5) - hash));
-            for (var i = 0, colour = "#"; i < 3; colour += ("00" + ((hash >> i++ * 8) & 0xFF).toString(16)).slice(-2));
+            for (var i = 0, colour = "#"; i < 3; colour += ("195" + ((hash >> i++ * 8) & 0xFF).toString(16)).slice(-2));
             return colour;
         },
         parseUsers: function(users) {
@@ -198,7 +198,9 @@ var data = {
         room: function(opt) {
             var room = {
                 server: true, // true || false,
+                server_name: data.current.server,
                 topic: "", // room topic
+                name: "",
                 active: false,
                 users: [], // users in room
                 /*{
@@ -241,7 +243,8 @@ var data = {
                 }
             }
             server.rooms[opt.server_url] = new self.room({
-                server: opt.server
+                server: opt.server,
+                name: opt.server
             });
             return server;
         },
@@ -263,13 +266,29 @@ var data = {
             }
             callbacks.forEach(e => self[e](data));
         },
-        changeRoom: function(room, callbacks) {
+        changeRoom: function(server, room, callbacks) {
             var self = this;
             var room = room.toLowerCase();
-            console.log(room);
+            console.log("Server: "+server);
+            console.log("Room: "+room);
             data.data[data.current.server].rooms[data.current.room].active = false;
+            data.current.server = server;
             data.current.room = room;
-            data.data[data.current.server].rooms[room].active = true;
+            data.data[server].rooms[room].active = true;
+            ipcRenderer.send('client-server', {
+                action: 'irc.set',
+                data: {
+                    type: "server",
+                    value: server
+                }
+            });
+            ipcRenderer.send('client-server', {
+                action: 'irc.set',
+                data: {
+                    type: "room",
+                    value: room
+                }
+            });
             callbacks.forEach(e => self[e](data));
         },
         setTopic: function(server, room, topic, callbacks) {
@@ -321,7 +340,8 @@ var data = {
             if (!data.data[server].rooms[to]) {
                 console.log("room doesnt exist");
                 data.data[server].rooms[to] = new self.room({
-                    server: false
+                    server: false,
+                    name: to
                 });
                 // it was a new room so update the list
                 callbacks = ["updateRooms"].concat(callbacks);
@@ -390,14 +410,15 @@ var data = {
                 //data.data[data.current.server].rooms[data.current.room].active = false;
                 data.data[data.current.server].rooms[room] = new self.room({
                     server: false,
-                    active: true
+                    active: true,
+                    name: room
                 }, self);
                 //data.current.room = room;
                 // it was a new room so update the list
 
                 callbacks = ["updateRooms", "updateMessages"].concat(callbacks);
                 callbacks.forEach(e => self[e](data));
-                self.changeRoom.apply(self, [room, ["updateRooms"]]);
+                self.changeRoom.apply(self, [data.current.server, room, ["updateRooms"]]);
             }
             if(nick) {
                 if (nick == data.data[data.current.server].rooms[room].nick) {
@@ -426,7 +447,19 @@ var data = {
             data.current.nicks[server] = {
                 nick: nick
             };
-            data.data[data.current.server].rooms[data.current.room].active = true;
+            data.data[server] = new self.server({
+                server_url: server,
+                server: true
+            }, self);
+            //data.data[data.current.server].rooms[data.current.room].active = true;
+            var server = server;
+            ipcRenderer.send('client-server', {
+                action: 'irc.set',
+                data: {
+                    type: "server",
+                    value: server
+                }
+            });
             callbacks.forEach(e => self[e](data));
         },
         listener: function() {
@@ -442,7 +475,7 @@ var data = {
                 var updateNick = self.updateNick;
                 var changeRoom = self.changeRoom;*/
                 if (self[arg.action]) {
-
+                    console.log(arg.args);
                     self[arg.action].apply(self, arg.args);
                 }
                 /*if(arg.connect) {
@@ -816,12 +849,13 @@ var Rooms = React.createClass({
         //var node = this.getDOMNode();
         //node.scrollTop = node.scrollHeight;
     },
-    changeRoom: function(room) {
+    changeRoom: function(server, room) {
         console.log("changing rooms");
         console.log(room);
         ipcRenderer.send('client-server', {
             action: 'irc.changeChannel',
             data: {
+                server: server,
                 room: room
             }
         });
@@ -843,7 +877,7 @@ var Rooms = React.createClass({
                   var active = state_data.data[i].rooms[j].active;
                   var classname = "room_list"+ (server ? " server":"") + (active ? " active":"");
 
-                  rooms.push(<li className={classname} data-room={j} onClick={this.changeRoom.bind(this, j)}>{j}</li>);
+                  rooms.push(<li className={classname} data-room={j} onClick={this.changeRoom.bind(this, i, j)}>{j}</li>);
             }
         }
 

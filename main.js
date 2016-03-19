@@ -83,9 +83,12 @@ var actions = {
             irc_api.say(data.msg);
 
         },
+        set: function(data) {
+            irc_api.set(data.type, data.value);
+        },
         changeChannel: function(data) {
             console.log(data);
-            irc_api.changeChannel(data.room);
+            irc_api.changeChannel(data.server, data.room);
         }
     }
 };
