@@ -58,12 +58,12 @@ module.exports = {
                 ]
             }
         },
-        /*'NOTICE': function(obj) {
+        'NOTICE': function(obj) {
             return {
                 action: 'notice',
-                args: [obj.args(), obj.server, ["updateRooms"]]
+                args: [obj.trailing(), obj.server, ["updateRooms"]]
             };
-        },*/
+        },
         'rpl_isupport': function(obj) {
             return {
                 action: 'isupport',
@@ -114,20 +114,9 @@ module.exports = {
     },
     send_cmds: {
         '/me': function(obj, self) {
-            //('PRIVMSG', this.channel, '\001ACTION ' + text.substr(4) + '\001');
             return {
                 action: 'actionMsg',
-                args: ['PRIVMSG', self.channel, '\001ACTION ' + obj.substr(4) + '\001'],
-                msg: '\001ACTION ' + obj.substr(4) + '\001',
-                channel: self.channel,
-                /*
-                action: 'actionMsg',
-                room: obj.args[0],
-                from: obj.nick,
-                msg: obj.args[1],
-                server: obj.server
-                */
-                // server, to, msg, from, callbacks
+
                 args_: [self.current.server, self.current.room, '\001ACTION ' + obj.substr(4) + '\001', self.current.nick, ["updateMessages"]],
                 send: "PRIVMSG "+self.current.room+" :\001ACTION "+obj.substr(4)+"\001"+"\r\n"
             }
@@ -137,40 +126,35 @@ module.exports = {
             self.channel = channels[channels.length - 1];
             return {
                 action: 'join',
-                args: ['JOIN'].concat(obj.substr(6).split(' ')),
-                msg: '',
-                // server, to, msg, from, callbacks
+
                 args_: [obj.substr(6).split(' ')[0], null, []],
                 send: ['JOIN'].concat(obj.substr(6).split(' ')).join(" ")+"\r\n"
             }
         },
         '/nick': function(obj, self) {
-            var old_nick = self.userName;
-            self.userName = obj.substr(6).split(' ')[0];
+            var old_nick = self.current.nick;
+            self.current.nick = obj.substr(6).split(' ')[0];
             return {
-                args: ['NICK', obj.substr(6).split(' ')[0]],
-                msg: obj.substr(6).split(' ')[0],
-                channel: self.channel,
-                from: old_nick //obj.substr(5).split(' ')[0],
+                action: "changeNick",
+
+                args_: [self.current.server, old_nick, obj.substr(6).split(' ')[0], ["updateUsers", "updateNick", "updateMessages"]],
+                send: "NICK "+obj.substr(6).split(' ')[0]+"\r\n"
             }
         },
         '/msg': function(obj, self) {
             var channels = obj.substr(5).split(' ')[0];
-            self.channel = obj.substr(5).split(' ')[0];
+            self.current.room = obj.substr(5).split(' ')[0];
             return {
                 action: "addMsg",
-                args: ['PRIVMSG', obj.substr(5).split(' ')[0], obj.substr(channels.length + 5)],
-                // server, to, msg, from, callbacks
-                args_: [self.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateRooms"]]
+
+                args_: [self.current.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateRooms"]],
+                send: "PRIVMSG "+obj.substr(5).split(' ')[0]+" "+obj.substr(channels.length + 5)+"\r\n"
             }
         },
         ' ': function(obj, self) {
             return {
                 action: 'addMsg',
-                args: ['PRIVMSG', self.current.room, obj],
-                msg: obj,
-                channel: self.current.room,
-                // server, to, msg, from, callbacks
+
                 args_: [self.current.server, self.current.room, obj, self.current.nick, ["updateMessages"]],
                 send: "PRIVMSG " + self.current.room + " :" + obj + "\r\n"
             }
