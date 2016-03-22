@@ -501,6 +501,7 @@
 	        connect: function connect(nick, server, callbacks) {
 	            var self = this;
 	            data.current.server = server;
+	            data.current.room = server;
 	            data.current.nicks[server] = {
 	                nick: nick
 	            };
@@ -1289,6 +1290,7 @@
 	        onScrollFrame: _react.PropTypes.func,
 	        onScrollStart: _react.PropTypes.func,
 	        onScrollStop: _react.PropTypes.func,
+	        onUpdate: _react.PropTypes.func,
 	        renderView: _react.PropTypes.func,
 	        renderTrackHorizontal: _react.PropTypes.func,
 	        renderTrackVertical: _react.PropTypes.func,
@@ -1659,7 +1661,7 @@
 	        if (this.prevPageY) {
 	            var clientY = event.clientY;
 	            var _refs8 = this.refs;
-	            var view = _refs8.view;
+	            var _view = _refs8.view;
 	            var trackVertical = _refs8.trackVertical;
 
 	            var _trackVertical$getBou = trackVertical.getBoundingClientRect();
@@ -1667,9 +1669,9 @@
 	            var trackTop = _trackVertical$getBou.top;
 
 	            var thumbHeight = this.getThumbVerticalHeight();
-	            var clickPosition = thumbHeight - this.prevPageY;
-	            var offset = -trackTop + clientY - clickPosition;
-	            view.scrollTop = this.getScrollTopForOffset(offset);
+	            var _clickPosition = thumbHeight - this.prevPageY;
+	            var _offset = -trackTop + clientY - _clickPosition;
+	            _view.scrollTop = this.getScrollTopForOffset(_offset);
 	        }
 	        return false;
 	    },
@@ -1758,6 +1760,8 @@
 	        var _this4 = this;
 
 	        this.raf(function () {
+	            var onUpdate = _this4.props.onUpdate;
+
 	            var values = _this4.getValues();
 	            if ((0, _getScrollbarWidth2["default"])()) {
 	                var _refs11 = _this4.refs;
@@ -1790,6 +1794,7 @@
 	                (0, _domCss2["default"])(thumbHorizontal, thumbHorizontalStyle);
 	                (0, _domCss2["default"])(thumbVertical, thumbVerticalStyle);
 	            }
+	            if (onUpdate) onUpdate(values);
 	            if (typeof callback !== 'function') return;
 	            callback(values);
 	        });

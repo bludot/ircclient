@@ -444,6 +444,7 @@ var data = {
         connect: function(nick, server, callbacks) {
             var self = this;
             data.current.server = server;
+            data.current.room = server;
             data.current.nicks[server] = {
                 nick: nick
             };

@@ -77,7 +77,9 @@ var actions = {
 
         connect: function(data) {
             //irc_api.start('irc.freenode.net', 'test_client', 'test_client', ['#blubot_test'], mainWindow);
-            irc_api.start(data.server, data.userName, data.userName, data.channels, mainWindow);
+            //irc_api.start(data.server, data.userName, data.userName, data.channels, mainWindow);
+            data.webContents = mainWindow;
+            irc_api.connect(data);
         },
         send: function(data) {
             irc_api.say(data.msg);
