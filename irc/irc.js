@@ -61,6 +61,7 @@ module.exports = (function(){
             console.log('Connection closed');
         });
         EventEmitter.call(self);
+
         self.addListener('raw', function(msg) {
             if (msg.command() == "MODE" || msg.command() == "rpl_endofmotd") {
                 console.log("attempt join");
@@ -71,9 +72,15 @@ module.exports = (function(){
         });
     };
     util.inherits(connection, EventEmitter);
+    connection.prototype.quit = function() {
+        console.log("quiting in irc script");
+        var self = this;
+        self.conn.destroy();
+    }
     connection.prototype.send = function(text) {
         var self = this;
         self.conn.write(text);
+        return true;
     };
     /*
 

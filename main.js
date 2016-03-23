@@ -85,11 +85,14 @@ var actions = {
             irc_api.say(data.msg);
 
         },
+        quit: function(data) {
+            irc_api.quit(data);
+        },
         set: function(data) {
             irc_api.set(data.type, data.value);
         },
         changeChannel: function(data) {
-            console.log(data);
+            
             irc_api.changeChannel(data.server, data.room);
         }
     }

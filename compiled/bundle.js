@@ -179,6 +179,11 @@
 	                color: '#00D35C', //+
 	                order: 3
 	            },
+	            '~': {
+	                type: 'owner',
+	                color: '#E8BC12', //+
+	                order: 3
+	            },
 	            ' ': {
 	                type: 'member',
 	                color: 'transparent',
@@ -215,6 +220,11 @@
 	                    code: code
 	                };
 	            });
+	            un_users = un_users.sort(function (a, b) {
+	                var textA = a.nick.toUpperCase();
+	                var textB = b.nick.toUpperCase();
+	                return textA < textB ? -1 : textA > textB ? 1 : 0;
+	            });
 	            return un_users.sort(function (a, b) {
 	                if (userTypes[a.code].order > userTypes[b.code].order) {
 	                    return 1;
@@ -227,6 +237,11 @@
 	        },
 	        userSort: function userSort(users) {
 	            var userTypes = data.msgListener.userTypes;
+	            var users = users.sort(function (a, b) {
+	                var textA = a.nick.toUpperCase();
+	                var textB = b.nick.toUpperCase();
+	                return textA < textB ? -1 : textA > textB ? 1 : 0;
+	            });
 	            return users.sort(function (a, b) {
 	                if (userTypes[a.code].order > userTypes[b.code].order) {
 	                    return 1;
@@ -237,6 +252,7 @@
 	                return 0;
 	            });
 	        },
+
 	        room: function room(opt) {
 	            var room = {
 	                server: true, // true || false,
@@ -336,6 +352,7 @@
 	            callbacks.forEach(function (e) {
 	                return self[e](data);
 	            });
+	            return true;
 	        },
 	        setTopic: function setTopic(server, room, topic, callbacks) {
 	            var self = this;
@@ -443,23 +460,82 @@
 	                return self[e](data);
 	            });
 	        },
-	        quit: function quit(nick, msg, callbacks) {
+	        quit: function quit(nick, msg, server, callbacks) {
+	            console.log("quiting on client");
+	            console.log(nick);
 	            var self = this;
-
-	            for (var i in data.data[data.current.server].rooms) {
-	                if (data.data[data.current.server].rooms[i].users.find(function (e) {
-	                    return e.nick == nick;
-	                })) {
-	                    self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
-	                };
-	                data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(function (e) {
-	                    return e.nick != nick;
+	            if (nick == data.current.nicks[data.current.server].nick) {
+	                console.log("it matches");
+	                ipcRenderer.send('client-server', {
+	                    action: 'irc.quit',
+	                    data: {
+	                        server: data.current.server
+	                    }
 	                });
+
+	                delete data.data[data.current.server];
+	                delete data.current.nicks[data.current.server];
+	                for (var i in data.data) {
+	                    data.current.server = i;
+	                }
+	            } else {
+	                for (var i in data.data[data.current.server].rooms) {
+	                    if (data.data[data.current.server].rooms[i].users.find(function (e) {
+	                        return e.nick == nick;
+	                    })) {
+	                        self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
+	                    };
+	                    data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(function (e) {
+	                        return e.nick != nick;
+	                    });
+	                }
+	                var callbacks = ["updateMessages", "updateUsers"];
+	            }
+
+	            callbacks.forEach(function (e) {
+	                return self[e](data);
+	            });
+	        },
+	        part: function part(nick, msg, room, server, callbacks) {
+	            console.log("quiting on client");
+	            console.log(nick);
+	            var self = this;
+	            if (nick == data.current.nicks[data.current.server].nick) {
+	                console.log("it matches");
+
+	                delete data.data[server].rooms[room];
+	                var new_room;
+	                for (var i in data.data[server].rooms) {
+	                    if (i != server) {
+	                        data.current.room = new_room = i;
+	                        break;
+	                    }
+	                }
+	                //self.changeRoom.apply(self, [server, new_room, ['updateRooms', 'updateMessages', 'updateUsers', 'updateTopic']]);
+	                ipcRenderer.send('client-server', {
+	                    action: 'irc.changeChannel',
+	                    data: {
+	                        server: server,
+	                        room: new_room
+	                    }
+	                });
+	            } else {
+	                for (var i in data.data[data.current.server].rooms) {
+	                    if (data.data[data.current.server].rooms[i].users.find(function (e) {
+	                        return e.nick == nick;
+	                    })) {
+	                        self.addMsg.apply(self, [data.current.server, i, nick + " has left the channel: " + msg, "-", ["updateMessages"]]);
+	                    };
+	                    data.data[data.current.server].rooms[i].users = data.data[data.current.server].rooms[i].users.filter(function (e) {
+	                        return e.nick != nick;
+	                    });
+	                }
 	            }
 	            var callbacks = ["updateMessages", "updateUsers"];
 	            callbacks.forEach(function (e) {
 	                return self[e](data);
 	            });
+	            return true;
 	        },
 	        join: function join(server, room, nick, callbacks) {
 	            var self = this;

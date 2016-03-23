@@ -10,7 +10,6 @@ module.exports = {
             };
         },
         'PRIVMSG': function(obj) {
-            console.log(obj.prefix())
             if (obj.trailing().substr(0, 12).indexOf("ACTION") != -1) {
 
                 return {
@@ -32,11 +31,14 @@ module.exports = {
         },
         'rpl_namreply': function(obj) {
             // (server, room, users, callbacks)
-            console.log(obj.params());
+
             return {
                 action: 'addUsers',
                 args: [obj.server, obj.args()[2], obj.trailing().split(" ").filter(e => e != ""), ["updateUsers"]]
             }
+        },
+        'PART' : function() {
+            return {};
         },
         'JOIN': function(obj) {
             var room;
@@ -53,8 +55,8 @@ module.exports = {
         'QUIT': function(obj) {
             return {
                 action: 'quit',
-                args: [obj.nick, obj.args()[0],
-                    []
+                args: [obj.nick, obj.args()[0], obj.server,
+                    ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']
                 ]
             }
         },
@@ -113,7 +115,7 @@ module.exports = {
                     }*/
     },
     send_cmds: {
-        '/me': function(obj, self) {
+        'me': function(obj, self) {
             return {
                 action: 'actionMsg',
 
@@ -121,7 +123,7 @@ module.exports = {
                 send: "PRIVMSG "+self.current.room+" :\001ACTION "+obj.substr(4)+"\001"+"\r\n"
             }
         },
-        '/join': function(obj, self) {
+        'join': function(obj, self) {
             var channels = obj.substr(6).split(' ');
             self.channel = channels[channels.length - 1];
             return {
@@ -131,7 +133,21 @@ module.exports = {
                 send: ['JOIN'].concat(obj.substr(6).split(' ')).join(" ")+"\r\n"
             }
         },
-        '/nick': function(obj, self) {
+        'part': function(obj, self) {
+            return {
+                action: "part",
+                args_: [self.current.nick, "intentionally leaving", self.current.room, self.current.server, ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']],
+                send: "PART "+self.current.room+" user decided to leave\r\n"
+            }
+        },
+        'quit': function(obj, self) {
+            return {
+                action: "quit",
+                args_: [self.current.nick, "intentionally quitting", self.current.server, ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']],
+                send: "QUIT user decided to quit\r\n"
+            }
+        },
+        'nick': function(obj, self) {
             var old_nick = self.current.nick;
             self.current.nick = obj.substr(6).split(' ')[0];
             return {
@@ -141,7 +157,7 @@ module.exports = {
                 send: "NICK "+obj.substr(6).split(' ')[0]+"\r\n"
             }
         },
-        '/msg': function(obj, self) {
+        'msg': function(obj, self) {
             var channels = obj.substr(5).split(' ')[0];
             self.current.room = obj.substr(5).split(' ')[0];
             return {
@@ -160,15 +176,19 @@ module.exports = {
             }
         }
     },
+    quit: function(data) {
+        irc.connections[data.server].quit();
+        delete irc.connections[data.server];
+    },
     changeChannel: function(server, channel) {
-        console.log("changing something")
-        console.log(channel);
+
         this.current.server = server;
         this.current.room = channel;
-        this.webContents.send('client-server', {
+        return this.webContents.send('client-server', {
             action: 'changeRoom',
             args: [server, channel, ['updateRooms', 'updateMessages', 'updateUsers', 'updateTopic']]
         });
+
     },
     set: function(type, value) {
         //(action.split(".").reduce(function(o, x) { return o[x] }, actions))(arg.data);
@@ -200,9 +220,9 @@ module.exports = {
     },
     say: function(text) {
         var self = this;
-        console.log(this);
-        var match = text.match(/\/.+?(?=\s)/);
-        var args = this.send_cmds[((match == null) ? " " : match[0])](text, self);
+        var cmd = (/^\/([a-z][a-z0-9_\-]*)/gim).exec(text);//ext.match(/\/.+?(?=\s)/);
+        cmd = cmd && cmd[1] && (cmd[1]+'').toLowerCase();
+        var args = this.send_cmds[((cmd == null) ? " " : cmd)](text, self);
         irc.connections[this.current.server].send(args.send);
         //this.client.send.apply(this.client, );
         self.webContents.send('client-server', {
