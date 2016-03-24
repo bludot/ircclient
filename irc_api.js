@@ -37,8 +37,13 @@ module.exports = {
                 args: [obj.server, obj.args()[2], obj.trailing().split(" ").filter(e => e != ""), ["updateUsers"]]
             }
         },
-        'PART' : function() {
-            return {};
+        'PART' : function(obj) {
+            return {
+                action: 'part',
+                args: [obj.nickname(), obj.args()[0], obj.server,
+                    ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']
+                ]
+            }
         },
         'JOIN': function(obj) {
             var room;
@@ -55,7 +60,7 @@ module.exports = {
         'QUIT': function(obj) {
             return {
                 action: 'quit',
-                args: [obj.nick, obj.args()[0], obj.server,
+                args: [obj.nickname(), obj.args()[0], obj.server,
                     ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']
                 ]
             }
@@ -84,7 +89,7 @@ module.exports = {
                 action: 'changeNick',
                 nick: obj.args[0],
                 old: obj.nick,
-                args: [obj.server, obj.nick, obj.args[0],
+                args: [obj.server, obj.nickname(), obj.trailing(),
                     ["updateUsers", "updateNick", "updateMessages"]
                 ]
             }

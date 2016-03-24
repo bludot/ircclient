@@ -159,35 +159,35 @@
 	    data: [],
 	    msgListener: {
 	        userTypes: {
+	            '~': {
+	                type: 'owner',
+	                color: '#E8BC12', //+
+	                order: 0
+	            },
 	            '&': {
 	                type: 'admin',
 	                color: '#9879D1', //&
-	                order: 0
+	                order: 1
 	            },
 	            '@': {
 	                type: 'ops',
 	                color: '#C1D189', //@
-	                order: 1
+	                order: 2
 	            },
 	            '%': {
 	                type: 'halfops',
 	                color: '#A7B085', //%
-	                order: 2
+	                order: 3
 	            },
 	            '+': {
 	                type: 'voiced',
 	                color: '#00D35C', //+
-	                order: 3
-	            },
-	            '~': {
-	                type: 'owner',
-	                color: '#E8BC12', //+
-	                order: 3
+	                order: 4
 	            },
 	            ' ': {
 	                type: 'member',
 	                color: 'transparent',
-	                order: 4
+	                order: 5
 	            }
 	        },
 	        hashColor: function hashColor(str) {
@@ -321,6 +321,7 @@
 	                    return e;
 	                });
 	                data.data[server].rooms[i].nick = new_nick;
+	                self.addMsg.apply(self, [data.current.server, i, old_nick + " is now known as: " + new_nick, "-", ["updateMessages"]]);
 	            }
 	            callbacks.forEach(function (e) {
 	                return self[e](data);
