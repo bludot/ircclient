@@ -479,6 +479,9 @@
 	                for (var i in data.data) {
 	                    data.current.server = i;
 	                }
+	                for (var i in data.data[data.current.server].rooms) {
+	                    data.current.room = i;
+	                }
 	            } else {
 	                for (var i in data.data[data.current.server].rooms) {
 	                    if (data.data[data.current.server].rooms[i].users.find(function (e) {
