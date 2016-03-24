@@ -12,6 +12,7 @@ module.exports = (function(){
 
         self.conn = new net.Socket();
         self.server = opt.server;
+        self.nick = opt.nick;
         self.conn.connect((opt.port || 6667), opt.server, function() {
             console.log('Connected');
             self.conn.write("irc_api*vtest\r\n");
@@ -25,16 +26,17 @@ module.exports = (function(){
 
         self.conn.on('data', function(data) {
             if(registered == false) {
-                self.conn.write("USER " + opt.nick + " * *  :" + opt.nick + "\r\n");
+
+                self.conn.write("USER " + opt.nick + " 8 *  :" + opt.nick + "\r\n");
                 self.conn.write("NICK " + opt.nick + "\r\n");
+
                 registered = true;
             }
             if(opt.debug) {
                 console.log('Received: ' + data);
             }
-            if (data.toString().split(" ")[0] == "PING") {
-                self.conn.write("PONG " + data.toString().split(" ")[1]);
-            }
+            
+
             var tmp = data.toString().split(/\r\n/gi).map(e => e + "\r\n").filter(e => e.toString() != "\r\n").map(e => {
                 try {
                     e = new Message(e);
@@ -48,10 +50,11 @@ module.exports = (function(){
 
                 if (msg) {
                     if(opt.debug) {
-                        console.log(msg);
+                        //console.log(msg);
                     }
                     msg.data = {};
                     msg.data.server = self.server;
+                    //msg.data.nick = self.nick;
                     self.emit('raw', msg);
                 }
             }
@@ -61,13 +64,24 @@ module.exports = (function(){
             console.log('Connection closed');
         });
         EventEmitter.call(self);
-
         self.addListener('raw', function(msg) {
             if (msg.command() == "MODE" || msg.command() == "rpl_endofmotd") {
                 console.log("attempt join");
                 for (var j in opt.channels) {
                     self.conn.write("JOIN " + opt.channels[j] + "\r\n");
                 }
+            }
+            if(msg.command() == "NOTICE") {
+                console.log("trailing: "+msg.trailing());
+            }
+            /*if(msg.command() == "NOTICE" && msg.trailing().toString().toLowerCase().indexOf("no ident response") != -1) {
+                console.log("try nick again");
+                self.conn.write("USER " + self.nick + " * *  :" + self.nick + "\r\n");
+                self.conn.write("NICK " + self.nick + "\r\n");
+            }*/
+            if (msg.command() == "PING") {
+                console.log("got ping: " + msg.trailing());
+                self.conn.write("PONG " + msg.trailing()+"\r\n");
             }
         });
     };
