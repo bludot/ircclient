@@ -322,19 +322,19 @@ li.user_list {
     border: 1px solid #9E9E9E;
 }
 
-li.room_list.server {
+li.channel_list.server {
     background: #3E3E3E;
     font-weight: 500;
     padding-left: 10px;
 }
-.room_list {
+.channel_list {
     padding: 3px 10px;
     padding-left: 25px;
     color: #CCCCCC;
     border-bottom: 1px solid #424242;
     cursor: pointer;
 }
-li.room_list.active {
+li.channel_list.active {
     background: #4685DB;
     color: #F3F3F3;
 }

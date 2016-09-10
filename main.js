@@ -5,7 +5,7 @@ const electron = require('electron');
 const app = electron.app;
 const BrowserWindow = electron.BrowserWindow;
 
-require('crash-reporter').start();
+//require('crash-reporter').start();
 var irc_api = require('./irc_api');
 
 
@@ -22,7 +22,7 @@ function createWindow () {
   mainWindow.loadURL('file://' + __dirname + '/index.html');
 
   // Open the DevTools.
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   // Emitted when the window is closed.
   mainWindow.webContents.on('devtools-opened', function() {
@@ -82,6 +82,7 @@ var actions = {
             irc_api.connect(data);
         },
         send: function(data) {
+            console.log("#################\n Called send!");
             irc_api.say(data.msg);
 
         },
@@ -92,8 +93,8 @@ var actions = {
             irc_api.set(data.type, data.value);
         },
         changeChannel: function(data) {
-            
-            irc_api.changeChannel(data.server, data.room);
+
+            irc_api.changeChannel(data.server, data.channel);
         }
     }
 };

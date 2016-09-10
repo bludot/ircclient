@@ -14,7 +14,7 @@ module.exports = {
 
                 return {
                     action: 'actionMsg',
-                    room: obj.args()[0],
+                    channel: obj.args()[0],
                     from: obj.nickname(),
                     msg: obj.trailing(),
                     server: obj.server,
@@ -41,34 +41,34 @@ module.exports = {
             return {
                 action: 'part',
                 args: [obj.nickname(), obj.args()[0], obj.server,
-                    ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']
+                    ['updateChannels', 'updateTopic', 'updateMessages', 'updateUsers']
                 ]
             }
         },
         'JOIN': function(obj) {
-            var room;
+            var channel;
             if(obj.args().length  == 0 || obj.args()[0] == ":") {
-                room = obj.trailing();
+                channel = obj.trailing();
             } else {
-                room = obj.args()[0]
+                channel = obj.args()[0]
             }
             return {
                 action: 'join',
-                args: [obj.server, room, obj.nickname(), []]
+                args: [obj.server, channel, obj.nickname(), []]
             };
         },
         'QUIT': function(obj) {
             return {
                 action: 'quit',
                 args: [obj.nickname(), obj.args()[0], obj.server,
-                    ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']
+                    ['updateChannels', 'updateTopic', 'updateMessages', 'updateUsers']
                 ]
             }
         },
         'NOTICE': function(obj) {
             return {
                 action: 'notice',
-                args: [obj.trailing(), obj.server, ["updateRooms"]]
+                args: [obj.trailing(), obj.server, ["updateChannels"]]
             };
         },
         'rpl_isupport': function(obj) {
@@ -124,8 +124,8 @@ module.exports = {
             return {
                 action: 'actionMsg',
 
-                args_: [self.current.server, self.current.room, '\001ACTION ' + obj.substr(4) + '\001', self.current.nick, ["updateMessages"]],
-                send: "PRIVMSG "+self.current.room+" :\001ACTION "+obj.substr(4)+"\001"+"\r\n"
+                args_: [self.current.server, self.current.channel, '\001ACTION ' + obj.substr(4) + '\001', self.current.nick, ["updateMessages"]],
+                send: "PRIVMSG "+self.current.channel+" :\001ACTION "+obj.substr(4)+"\001"+"\r\n"
             }
         },
         'join': function(obj, self) {
@@ -134,21 +134,27 @@ module.exports = {
             return {
                 action: 'join',
 
-                args_: [obj.substr(6).split(' ')[0], null, []],
+                args_: [self.current.server, obj.substr(6).split(' ')[0], null, []],
                 send: ['JOIN'].concat(obj.substr(6).split(' ')).join(" ")+"\r\n"
             }
         },
         'part': function(obj, self) {
-            return {
+            /*return {
                 action: "part",
-                args_: [self.current.nick, "intentionally leaving", self.current.room, self.current.server, ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']],
-                send: "PART "+self.current.room+" user decided to leave\r\n"
+                args_: [self.current.nick, "intentionally leaving", self.current.channel, self.current.server, ['updateChannels', 'updateTopic', 'updateMessages', 'updateUsers']],
+                send: "PART "+self.current.channel+" user decided to leave\r\n"
+            }*/
+            return {
+                action: "addMsg",
+
+                args_: [self.current.server, self.current.channel, "leaving!", self.userName, ["updateMessages", "updateChannels"]],
+                send: "PART "+self.current.channel+" user decided to leave\r\n"
             }
         },
         'quit': function(obj, self) {
             return {
                 action: "quit",
-                args_: [self.current.nick, "intentionally quitting", self.current.server, ['updateRooms', 'updateTopic', 'updateMessages', 'updateUsers']],
+                args_: [self.current.nick, "intentionally quitting", self.current.server, ['updateChannels', 'updateTopic', 'updateMessages', 'updateUsers']],
                 send: "QUIT user decided to quit\r\n"
             }
         },
@@ -164,11 +170,11 @@ module.exports = {
         },
         'msg': function(obj, self) {
             var channels = obj.substr(5).split(' ')[0];
-            self.current.room = obj.substr(5).split(' ')[0];
+            self.current.channel = obj.substr(5).split(' ')[0];
             return {
                 action: "addMsg",
 
-                args_: [self.current.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateRooms"]],
+                args_: [self.current.server, obj.substr(5).split(' ')[0], obj.substr(channels.length + 5), self.userName, ["updateMessages", "updateChannels"]],
                 send: "PRIVMSG "+obj.substr(5).split(' ')[0]+" "+obj.substr(channels.length + 5)+"\r\n"
             }
         },
@@ -176,8 +182,8 @@ module.exports = {
             return {
                 action: 'addMsg',
 
-                args_: [self.current.server, self.current.room, obj, self.current.nick, ["updateMessages"]],
-                send: "PRIVMSG " + self.current.room + " :" + obj + "\r\n"
+                args_: [self.current.server, self.current.channel, obj, self.current.nick, ["updateMessages"]],
+                send: "PRIVMSG " + self.current.channel + " :" + obj + "\r\n"
             }
         }
     },
@@ -188,10 +194,10 @@ module.exports = {
     changeChannel: function(server, channel) {
 
         this.current.server = server;
-        this.current.room = channel;
+        this.current.channel = channel;
         return this.webContents.send('client-server', {
-            action: 'changeRoom',
-            args: [server, channel, ['updateRooms', 'updateMessages', 'updateUsers', 'updateTopic']]
+            action: 'changeChannel',
+            args: [server, channel, ['updateChannels', 'updateMessages', 'updateUsers', 'updateTopic']]
         });
 
     },
@@ -204,7 +210,7 @@ module.exports = {
         var webContents = self.webContents = data.webContents;
         self.current = {
             server: data.server,
-            room: "",
+            channel: "",
             nick: data.nick
         };
         irc.connect(data);
@@ -224,6 +230,7 @@ module.exports = {
 
     },
     say: function(text) {
+        console.log("###############\nsending a message");
         var self = this;
         var cmd = (/^\/([a-z][a-z0-9_\-]*)/gim).exec(text);//ext.match(/\/.+?(?=\s)/);
         cmd = cmd && cmd[1] && (cmd[1]+'').toLowerCase();
