@@ -7,7 +7,6 @@
 
 **/
 
-
 var userTypes = {
         '~': {
             type: 'owner',
