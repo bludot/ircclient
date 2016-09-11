@@ -424,7 +424,7 @@ var Topic = React.createClass({
             data: data
         });
         //var node = this.getDOMNode();
-        //node.scrollTop = node.scrollHeight;
+        node.scrollTop = node.scrollHeight;
     },
     render: function() {
         var topic = (<span></span>);

@@ -483,7 +483,7 @@
 	            data: data
 	        });
 	        //var node = this.getDOMNode();
-	        //node.scrollTop = node.scrollHeight;
+	        node.scrollTop = node.scrollHeight;
 	    },
 	    render: function render() {
 	        var topic = React.createElement('span', null);
