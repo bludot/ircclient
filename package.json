@@ -1,6 +1,6 @@
 {
   "name": "ircclient",
-  "version": "0.1.0",
+  "version": "2.1.0",
   "description": "a desktop irc client",
   "author": "Nyanko",
   "main": "./main.js",
@@ -22,15 +22,18 @@
     "start": "./node_modules/.bin/electron .",
     "build": "./node_modules/.bin/webpack",
     "export": "electron-packager ./ ircclient --platform=win32 --arch=ia32 --version=0.36.8 --out=E:/bobet/Documents/ircclient/app",
-    "pack": "build"
+    "pack": "build --dir",
+    "dist": "build"
   },
   "dependencies": {
     "objectmodel": "^2.1.2"
   },
   "build": {
-    "win": {
-      "title": "Electron Builder Example",
-      "icon": "icon.ico"
+      "appId": "ircclient.nyanko",
+      "category": "public.app-category.social-networking",
+      "asar": true,
+      "mac": {
+          "category": "public.app-category.social-networking"
+      }
     }
-  }
 }

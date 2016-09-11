@@ -379,3 +379,20 @@ li.channel_list.active {
 .trigger:hover {
     background: rgba(0,0,0,0.26);
 }
+
+
+#build {
+    position:fixed;
+    bottom:0;
+    right:0;
+    height: auto;
+width: auto;
+z-index: 3;
+display: block;
+background: rgb(40, 40, 45);
+margin: 0;
+padding: 3px 8px;
+color: #555656;
+font-weight: 500;
+font-size: 18px;
+}
